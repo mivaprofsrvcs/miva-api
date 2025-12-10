@@ -40,7 +40,7 @@ jobs:
         run: vendor/bin/pest
 
       - name: Run PHPStan
-        run: vendor/bin/phpstan analyse
+        run: vendor/bin/phpstan analyse --memory-limit=512M
 
       - name: Run Pint
         run: vendor/bin/pint --test

@@ -44,7 +44,7 @@
     },
     "scripts": {
         "test": "pest",
-        "phpstan": "phpstan analyse",
+        "phpstan": "phpstan analyse --memory-limit=512M",
         "pint": "pint --test",
         "lint": [
             "@phpstan",
