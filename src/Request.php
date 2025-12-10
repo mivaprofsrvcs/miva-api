@@ -18,6 +18,7 @@
 
 namespace pdeans\Miva\Api;
 
+use Composer\InstalledVersions;
 use JsonException;
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
@@ -75,14 +76,33 @@ class Request
     protected RequestBuilder $requestBuilder;
 
     /**
+     * Cached package version string.
+     *
+     * @var string|null
+     */
+    protected static ?string $version = null;
+
+    /**
      * Create a new API request instance.
      */
     public function __construct(RequestBuilder $requestBuilder, ClientInterface|array|null $client = null)
     {
-        $this->headers = ['Content-Type' => 'application/json'];
+        $this->headers = $this->defaultHeaders();
         $this->client = $this->resolveClient($client);
 
         $this->setRequestBuilder($requestBuilder);
+    }
+
+    /**
+     * Get default request headers.
+     */
+    protected function defaultHeaders(): array
+    {
+        return [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+            'User-Agent' => 'mivaprofsrvcs-miva-api/' . $this->packageVersion(),
+        ];
     }
 
     /**
@@ -109,6 +129,26 @@ class Request
     public function getRequestBuilder(): RequestBuilder
     {
         return $this->requestBuilder;
+    }
+
+    /**
+     * Determine the package version for the User-Agent header.
+     */
+    protected function packageVersion(): string
+    {
+        if (self::$version !== null) {
+            return self::$version;
+        }
+
+        if (class_exists(InstalledVersions::class)) {
+            $version = InstalledVersions::getPrettyVersion('pdeans/miva-api');
+
+            if (is_string($version) && $version !== '') {
+                return self::$version = $version;
+            }
+        }
+
+        return self::$version = 'unknown';
     }
 
     /**
