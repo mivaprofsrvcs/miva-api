@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api\Response;
 
 use ArrayIterator;

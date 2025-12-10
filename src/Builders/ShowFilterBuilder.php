@@ -16,6 +16,8 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api\Builders;
 
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
