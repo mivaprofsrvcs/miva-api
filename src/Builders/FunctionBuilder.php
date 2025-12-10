@@ -22,11 +22,6 @@ use pdeans\Miva\Api\Contracts\BuilderInterface;
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 
-/**
- * FunctionBuilder class
- *
- * Build a request Function.
- */
 class FunctionBuilder implements BuilderInterface
 {
     /**

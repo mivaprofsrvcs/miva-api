@@ -28,9 +28,6 @@ use pdeans\Miva\Api\Exceptions\JsonSerializeException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
-/**
- * API Request class
- */
 class Request
 {
     /**

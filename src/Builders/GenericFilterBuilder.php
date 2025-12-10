@@ -18,13 +18,6 @@
 
 namespace pdeans\Miva\Api\Builders;
 
-/**
- * GenericFilterBuilder class
- *
- * Build a generic function filter. A generic filter will be created
- * for any filter passed into the function builder that does not correspond
- * to an individual filter builder class.
- */
 class GenericFilterBuilder extends FilterBuilder
 {
     /**

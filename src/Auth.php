@@ -20,9 +20,6 @@ namespace pdeans\Miva\Api;
 
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 
-/**
- * API Auth class
- */
 final class Auth
 {
     /**
@@ -37,21 +34,24 @@ final class Auth
      *
      * @var string
      */
-    private string $authHeaderName;
+    private string $authHeaderName = 'X-Miva-API-Authorization';
 
     /**
      * List of valid HMAC types.
      *
      * @var array
      */
-    private array $hmacList;
+    private array $hmacList = [
+        'sha1',
+        'sha256',
+    ];
 
     /**
      * API request HMAC signature.
      *
      * @var string
      */
-    private string $hmacSignature;
+    private string $hmacSignature = '';
 
     /**
      * The HMAC type.
@@ -75,11 +75,7 @@ final class Auth
         $this->accessToken = $accessToken;
         $this->privateKey = $privateKey;
 
-        $this->setHmacList();
         $this->setHmacType($hmacType);
-
-        $this->authHeaderName = 'X-Miva-API-Authorization';
-        $this->hmacSignature = '';
     }
 
     /**
@@ -126,27 +122,10 @@ final class Auth
     }
 
     /**
-     * Set the list of valid HMAC types
-     */
-    protected function setHmacList(): static
-    {
-        $this->hmacList = [
-            'sha1',
-            'sha256',
-        ];
-
-        return $this;
-    }
-
-    /**
      * Set the HMAC type.
      */
     protected function setHmacType(string $hmacType): static
     {
-        if (!$this->hmacList) {
-            $this->setHmacList();
-        }
-
         if ($hmacType === '' || (is_string($this->privateKey) && $this->privateKey === '')) {
             $this->hmacType = '';
         } else {

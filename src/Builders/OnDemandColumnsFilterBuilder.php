@@ -18,11 +18,6 @@
 
 namespace pdeans\Miva\Api\Builders;
 
-/**
- * OnDemandColumnsFilterBuilder class
- *
- * Build an ondemandcolumns request function filter.
- */
 class OnDemandColumnsFilterBuilder extends FilterBuilder
 {
     /**

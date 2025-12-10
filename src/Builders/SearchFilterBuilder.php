@@ -21,9 +21,6 @@ namespace pdeans\Miva\Api\Builders;
 use pdeans\Miva\Api\Exceptions\InvalidArgumentException;
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 
-/**
- * SearchFilterBuilder class
- */
 class SearchFilterBuilder extends FilterBuilder
 {
     /**
@@ -39,9 +36,9 @@ class SearchFilterBuilder extends FilterBuilder
      * @var array
      */
     protected static array $NULL_OPERATORS = [
-        'TRUE',  // "field" is true
-        'FALSE', // "field" is false
-        'NULL',  // "field" is null
+        'TRUE',
+        'FALSE',
+        'NULL',
     ];
 
     /**
@@ -57,21 +54,21 @@ class SearchFilterBuilder extends FilterBuilder
      * @var array
      */
     protected static array $OPERATORS = [
-        'EQ',       // "field" equals "value" (generally case insensitive)
-        'GT',       // "field" is greater than to "value"
-        'GE',       // "field" is greater than or equal to "value"
-        'LT',       // "field" is less than "value"
-        'LE',       // "field" is less than or equal to "value"
-        'CO',       // "field" contains "value"
-        'NC',       // "field" does not contain "value"
-        'LIKE',     // "field" matches "value" using SQL LIKE semantics
-        'NOTLIKE',  // "field" does not match "value" using SQL LIKE semantics
-        'NE',       // "field" is not equal to "value"
-        'TRUE',     // "field" is true
-        'FALSE',    // "field" is false
-        'NULL',     // "field" is null
-        'IN',       // "field" is equal to one of a set of comma-separated values taken from "value"
-        'SUBWHERE', // Used for parenthetical comparisons
+        'EQ',
+        'GT',
+        'GE',
+        'LT',
+        'LE',
+        'CO',
+        'NC',
+        'LIKE',
+        'NOTLIKE',
+        'NE',
+        'TRUE',
+        'FALSE',
+        'NULL',
+        'IN',
+        'SUBWHERE',
     ];
 
     /**

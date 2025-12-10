@@ -27,9 +27,6 @@ use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
-/**
- * This is the client class to interact with the Miva JSON API.
- */
 class Client
 {
     /**
@@ -44,7 +41,7 @@ class Client
      *
      * @var array
      */
-    protected array $headers;
+    protected array $headers = [];
 
     /**
      * Api configuration options.
@@ -58,7 +55,7 @@ class Client
      *
      * @var \pdeans\Miva\Api\Request|null
      */
-    protected ?Request $request;
+    protected ?Request $request = null;
 
     /**
      * Api RequestBuilder instance.
@@ -87,12 +84,8 @@ class Client
             isset($this->options['hmac']) ? (string) $this->options['hmac'] : 'sha256'
         );
 
-        $this->request = null;
-
         $this->createRequestBuilder();
         $this->setUrl($this->options['url']);
-
-        $this->headers = [];
 
         if (! empty($this->options['http_headers'])) {
             $this->addHeaders($this->options['http_headers']);
