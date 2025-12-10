@@ -93,11 +93,11 @@ class SearchFilterBuilder extends FilterBuilder
 
         $this->operator = strtoupper($operator);
 
-        if (!in_array($this->operator, self::OPERATORS)) {
+        if (! in_array($this->operator, self::OPERATORS)) {
             throw new InvalidValueException('Invalid operator "' . $operator . '" provided.');
         }
 
-        if ($value === null && !in_array($this->operator, self::NULL_OPERATORS)) {
+        if ($value === null && ! in_array($this->operator, self::NULL_OPERATORS)) {
             throw new InvalidValueException('Invalid value provided for "value".');
         }
 

@@ -168,7 +168,7 @@ class FilterBuilder implements BuilderInterface
 
         if (
             ! isset($filter['value'])
-            && !in_array(strtoupper($filter['operator']), SearchFilterBuilder::getNullOperators())
+            && ! in_array(strtoupper($filter['operator']), SearchFilterBuilder::getNullOperators())
         ) {
             throw new MissingRequiredValueException('Missing required filter property "value".');
         }

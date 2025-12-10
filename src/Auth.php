@@ -129,7 +129,7 @@ final class Auth
         } else {
             $hmacTypeFormatted = strtolower($hmacType);
 
-            if (!in_array($hmacTypeFormatted, self::HMAC_LIST)) {
+            if (! in_array($hmacTypeFormatted, self::HMAC_LIST)) {
                 throw new InvalidValueException(
                     sprintf(
                         'Invalid HMAC type "%s" provided. Valid HMAC types: "%s".',
