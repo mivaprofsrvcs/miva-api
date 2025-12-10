@@ -20,7 +20,6 @@ declare(strict_types=1);
 
 namespace pdeans\Miva\Api\Builders;
 
-use pdeans\Miva\Api\Builders\FunctionBuilder;
 use pdeans\Miva\Api\Contracts\BuilderInterface;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 

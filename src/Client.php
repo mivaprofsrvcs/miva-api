@@ -20,8 +20,6 @@ declare(strict_types=1);
 
 namespace pdeans\Miva\Api;
 
-use pdeans\Miva\Api\Request;
-use pdeans\Miva\Api\Response;
 use pdeans\Miva\Api\Builders\FunctionBuilder;
 use pdeans\Miva\Api\Builders\RequestBuilder;
 use pdeans\Miva\Api\Exceptions\InvalidMethodCallException;
