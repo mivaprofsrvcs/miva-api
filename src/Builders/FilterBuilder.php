@@ -121,7 +121,7 @@ class FilterBuilder implements BuilderInterface
      */
     protected function isBlankValue(mixed $value): bool
     {
-        if (is_null($value)) {
+        if ($value === null) {
             return true;
         }
 

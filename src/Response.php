@@ -143,7 +143,7 @@ class Response
      */
     public function getResponse(?string $functionName = null): array
     {
-        if (! is_null($functionName)) {
+        if ($functionName !== null) {
             return $this->getFunction($functionName);
         }
 
@@ -207,7 +207,7 @@ class Response
             }
         }
 
-        if (is_null($this->success) && empty(get_object_vars($this->errors))) {
+        if ($this->success === null && empty(get_object_vars($this->errors))) {
             $this->success = true;
         }
 

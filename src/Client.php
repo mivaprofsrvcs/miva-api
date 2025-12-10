@@ -97,7 +97,7 @@ class Client
      */
     public function add(?FunctionBuilder $function = null): static
     {
-        if (! is_null($function)) {
+        if ($function !== null) {
             $this->requestBuilder->function = $function;
         }
 
