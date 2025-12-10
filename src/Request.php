@@ -19,11 +19,13 @@
 namespace pdeans\Miva\Api;
 
 use JsonException;
-use pdeans\Http\Client;
-use pdeans\Http\Request as HttpRequest;
-use pdeans\Http\Response as HttpResponse;
+use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Psr7\Request as PsrRequest;
 use pdeans\Miva\Api\Builders\RequestBuilder;
 use pdeans\Miva\Api\Exceptions\JsonSerializeException;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * API Request class
@@ -40,9 +42,9 @@ class Request
     /**
      * HTTP client (cURL) instance.
      *
-     * @var \pdeans\Http\Client
+     * @var \GuzzleHttp\ClientInterface
      */
-    protected Client $client;
+    protected ClientInterface $client;
 
     /**
      * API request headers.
@@ -54,16 +56,16 @@ class Request
     /**
      * The HTTP request instance.
      *
-     * @var \pdeans\Http\Request|null
+     * @var \Psr\Http\Message\RequestInterface|null
      */
-    protected HttpRequest|null $request = null;
+    protected RequestInterface|null $request = null;
 
     /**
      * The HTTP response instance.
      *
-     * @var \pdeans\Http\Response|null
+     * @var \Psr\Http\Message\ResponseInterface|null
      */
-    protected HttpResponse|null $response = null;
+    protected ResponseInterface|null $response = null;
 
     /**
      * The API request builder instance.
@@ -75,10 +77,10 @@ class Request
     /**
      * Create a new API request instance.
      */
-    public function __construct(RequestBuilder $requestBuilder, array $clientOpts = [])
+    public function __construct(RequestBuilder $requestBuilder, ClientInterface|array|null $client = null)
     {
-        $this->client = new Client($clientOpts);
         $this->headers = ['Content-Type' => 'application/json'];
+        $this->client = $this->resolveClient($client);
 
         $this->setRequestBuilder($requestBuilder);
     }
@@ -114,13 +116,14 @@ class Request
      */
     public function releaseClient(): void
     {
-        $this->client->release();
+        $this->request = null;
+        $this->response = null;
     }
 
     /**
      * Get the API request.
      */
-    public function request(): HttpRequest|null
+    public function request(): RequestInterface|null
     {
         return $this->request;
     }
@@ -128,7 +131,7 @@ class Request
     /**
      * Get the previous API response.
      */
-    public function response(): HttpResponse|null
+    public function response(): ResponseInterface|null
     {
         return $this->response;
     }
@@ -136,7 +139,7 @@ class Request
     /**
      * Send an API request.
      */
-    public function sendRequest(string $url, Auth $auth, array $httpHeaders = []): HttpResponse
+    public function sendRequest(string $url, Auth $auth, array $httpHeaders = []): ResponseInterface
     {
         $this->response = null;
 
@@ -148,9 +151,11 @@ class Request
             $auth->getAuthHeader($body)
         );
 
-        $this->request = new HttpRequest($url, 'POST', $this->client->getStream($body), $headers);
+        $this->request = new PsrRequest('POST', $url, $headers, $body);
 
-        $this->response = $this->client->sendRequest($this->request);
+        $this->response = $this->client->send($this->request, [
+            'http_errors' => false,
+        ]);
 
         return $this->response;
     }
@@ -163,5 +168,29 @@ class Request
         $this->requestBuilder = $requestBuilder;
 
         return $this;
+    }
+
+    /**
+     * Resolve HTTP client instance from provided configuration.
+     */
+    protected function resolveClient(ClientInterface|array|null $client): ClientInterface
+    {
+        if ($client instanceof ClientInterface) {
+            return $client;
+        }
+
+        if (is_array($client)) {
+            if (isset($client['client']) && $client['client'] instanceof ClientInterface) {
+                return $client['client'];
+            }
+
+            $clientOptions = $client;
+
+            unset($clientOptions['client']);
+
+            return new Client($clientOptions);
+        }
+
+        return new Client([]);
     }
 }

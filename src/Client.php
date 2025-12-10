@@ -18,14 +18,14 @@
 
 namespace pdeans\Miva\Api;
 
-use pdeans\Http\Request as HttpRequest;
-use pdeans\Http\Response as HttpResponse;
 use pdeans\Miva\Api\Request;
 use pdeans\Miva\Api\Response;
 use pdeans\Miva\Api\Builders\FunctionBuilder;
 use pdeans\Miva\Api\Builders\RequestBuilder;
 use pdeans\Miva\Api\Exceptions\InvalidMethodCallException;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * This is the client class to interact with the Miva JSON API.
@@ -187,7 +187,7 @@ class Client
     /**
      * Get the previous request instance.
      */
-    public function getPreviousRequest(): HttpRequest|null
+    public function getPreviousRequest(): RequestInterface|null
     {
         return $this->request?->request();
     }
@@ -195,7 +195,7 @@ class Client
     /**
      * Get the previous response instance.
      */
-    public function getPreviousResponse(): HttpResponse|null
+    public function getPreviousResponse(): ResponseInterface|null
     {
         return $this->request?->response();
     }
@@ -216,7 +216,7 @@ class Client
         if (! $this->request instanceof Request) {
             $this->request = new Request(
                 $this->requestBuilder,
-                isset($this->options['http_client']) ? (array) $this->options['http_client'] : []
+                $this->options['http_client'] ?? null
             );
         }
 

@@ -4,6 +4,10 @@
     "description": "PHP library for interacting with the Miva JSON API.",
     "license": "MIT",
     "keywords": ["Miva", "Merchant", "json", "api"],
+    "support": {
+		"issues": "https://github.com/mivaprofsrvcs/miva-api/issues",
+		"source": "https://github.com/mivaprofsrvcs/miva-api"
+	},
     "authors": [
         {
             "name": "Patrick Stearns",
@@ -11,15 +15,18 @@
         }
     ],
     "require": {
-        "php": "^8.1",
+        "php": "^8.3",
         "ext-json": "*",
-        "pdeans/http": "^2.0.3"
+        "guzzlehttp/guzzle": "^7.10"
     },
     "autoload": {
         "psr-4": {
             "pdeans\\Miva\\Api\\": "src/"
         }
     },
+    "config": {
+		"sort-packages": true
+	},
     "minimum-stability": "stable",
     "prefer-stable": true
 }
