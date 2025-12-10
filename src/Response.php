@@ -22,6 +22,8 @@ use stdClass;
 use JsonException;
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 use pdeans\Miva\Api\Exceptions\JsonSerializeException;
+use pdeans\Miva\Api\Response\ErrorBag;
+use pdeans\Miva\Api\Response\Error;
 
 class Response
 {
@@ -33,32 +35,41 @@ class Response
     protected string $body;
 
     /**
-     * The API response data structure.
+     * Parsed response data grouped by function name
+     * and iteration/operation index.
      *
-     * @var array
+     * @var array<string, array<int, mixed>>
      */
     protected array $data = [];
 
     /**
-     * The API errors instance.
-     *
-     * @var stdClass
+     * Error bag for the full response.
      */
-    protected stdClass $errors;
+    protected ErrorBag $errors;
 
     /**
-     * The list of functions included in the API request.
+     * Parsed result metadata grouped by function.
      *
-     * @var array
+     * @var array<int, array{name: string, count: int}>
      */
-    protected array $functions;
+    protected array $functionMeta = [];
 
     /**
-     * Flag for determining if Api request was successful.
+     * Unique function names included in the API request.
      *
-     * @var bool|null
+     * @var array<int, string>
      */
-    protected ?bool $success = null;
+    protected array $functions = [];
+
+    /**
+     * Track if any result reported failure.
+     */
+    protected bool $hasFailure = false;
+
+    /**
+     * Overall success flag.
+     */
+    protected bool $success = false;
 
     /**
      * Create a new API response instance.
@@ -72,10 +83,14 @@ class Response
         }
 
         $this->body = $responseBody;
-        $this->errors = new stdClass();
-        $this->functions = $requestFunctionsList;
+        $this->functionMeta = $this->normalizeFunctionMeta($requestFunctionsList);
+        $this->functions = array_values(
+            array_unique(array_column($this->functionMeta, 'name'))
+        );
+        $this->errors = new ErrorBag();
 
         $this->parseResponseBody($responseBody);
+        $this->success = ! $this->errors->has();
     }
 
     /**
@@ -111,7 +126,7 @@ class Response
     /**
      * Get the API response errors.
      */
-    public function getErrors(): stdClass
+    public function getErrors(): ErrorBag
     {
         return $this->errors;
     }
@@ -152,10 +167,44 @@ class Response
 
     /**
      * Flag for determining if the API response contains errors.
+     *
+     * Alias of "successful" method.
      */
     public function isSuccess(): bool
     {
         return $this->success;
+    }
+
+    /**
+     * Determine if the response is successful.
+     */
+    public function successful(): bool
+    {
+        return $this->success;
+    }
+
+    /**
+     * Determine if the response failed.
+     */
+    public function failed(): bool
+    {
+        return ! $this->success;
+    }
+
+    /**
+     * Determine if the response contains any errors.
+     */
+    public function hasErrors(): bool
+    {
+        return $this->errors->has();
+    }
+
+    /**
+     * Get the response errors bag.
+     */
+    public function errors(): ErrorBag
+    {
+        return $this->errors;
     }
 
     /**
@@ -179,39 +228,39 @@ class Response
             throw new JsonSerializeException($exception->getMessage());
         }
 
-        $functions = [];
-
         if (is_object($response)) {
-            $this->success = (bool) $response->success;
+            $meta = $this->functionMeta[0] ?? ['name' => $this->functions[0] ?? '', 'count' => 1];
 
-            if ($this->success) {
-                $functions = [$this->functions[0] => [$response]];
-            } else {
-                $this->errors->success = $this->success;
-                $this->errors->code = (string) $response->error_code;
-                $this->errors->message = (string) $response->error_message;
-            }
+            $this->addResult($meta['name'], 0, $response);
         } elseif (is_array($response)) {
-            $functionsCount = count($this->functions);
+            $metaCount = count($this->functionMeta);
 
-            foreach ($response as $index => $results) {
-                $functionName = $this->functions[($functionsCount === 1 ? 0 : $index)];
+            if ($metaCount === 1) {
+                $functionName = $this->functionMeta[0]['name'];
 
-                if (is_array($results)) {
-                    foreach ($results as $result) {
-                        $functions[$functionName][] = $result;
+                foreach ($response as $iterationIndex => $result) {
+                    $this->addResult($functionName, $iterationIndex, $result);
+                }
+            } else {
+                foreach ($response as $operationIndex => $result) {
+                    if (! isset($this->functionMeta[$operationIndex])) {
+                        continue;
                     }
-                } elseif (is_object($results)) {
-                    $functions[$functionName][] = $results;
+
+                    $functionName = $this->functionMeta[$operationIndex]['name'];
+
+                    if (is_array($result)) {
+                        foreach ($result as $iterationIndex => $iterationResult) {
+                            $this->addResult($functionName, $iterationIndex, $iterationResult);
+                        }
+                    } else {
+                        $this->addResult($functionName, 0, $result);
+                    }
                 }
             }
         }
 
-        if ($this->success === null && empty(get_object_vars($this->errors))) {
-            $this->success = true;
-        }
-
-        $this->data = $functions;
+        $this->success = ! $this->hasFailure && ! $this->errors->has();
     }
 
     /**
@@ -222,5 +271,94 @@ class Response
     protected function throwInvalidFunctionError(string $functionName): void
     {
         throw new InvalidValueException('Function name "' . $functionName . '" invalid or missing from results list.');
+    }
+
+    /**
+     * Add a parsed result to the response store and aggregate errors.
+     */
+    protected function addResult(string $functionName, int $index, mixed $result): void
+    {
+        if (! is_object($result)) {
+            return;
+        }
+
+        $success = isset($result->success) ? (bool) $result->success : false;
+        $data = $result->data ?? $result;
+        $errors = $success ? new ErrorBag() : $this->buildErrorBag($functionName, $index, $result);
+
+        $this->data[$functionName][$index] = $data;
+        $this->errors = $this->errors->merge($errors);
+
+        if (! $success || $errors->has()) {
+            $this->hasFailure = true;
+        }
+    }
+
+    /**
+     * Build an error bag from a response object.
+     */
+    protected function buildErrorBag(string $functionName, int $index, stdClass $result): ErrorBag
+    {
+        if (! isset($result->error_code) && ! isset($result->error_message)) {
+            return new ErrorBag();
+        }
+
+        $errorFields = [];
+
+        if (isset($result->error_fields) && is_array($result->error_fields)) {
+            foreach ($result->error_fields as $field) {
+                if (! is_object($field)) {
+                    continue;
+                }
+
+                $errorFields[] = [
+                    'error_field' => isset($field->error_field) ? (string) $field->error_field : null,
+                    'error_message' => isset($field->error_message) ? (string) $field->error_message : null,
+                ];
+            }
+        }
+
+        $error = new Error(
+            code: isset($result->error_code) ? (string) $result->error_code : '',
+            message: isset($result->error_message) ? (string) $result->error_message : '',
+            field: isset($result->error_field) ? (string) $result->error_field : null,
+            fieldMessage: isset($result->error_field_message) ? (string) $result->error_field_message : null,
+            validationError: (bool) ($result->validation_error ?? false),
+            inputErrors: (bool) ($result->input_errors ?? false),
+            errorFields: $errorFields,
+            functionName: $functionName,
+            index: $index
+        );
+
+        return new ErrorBag([$error]);
+    }
+
+    /**
+     * Normalize function metadata from the request function list.
+     */
+    protected function normalizeFunctionMeta(array $functionList): array
+    {
+        $meta = [];
+        $isAssoc = ! array_is_list($functionList);
+
+        if ($isAssoc) {
+            foreach ($functionList as $name => $functions) {
+                $count = is_array($functions) ? max(1, count($functions)) : 1;
+
+                $meta[] = [
+                    'name' => (string) $name,
+                    'count' => $count,
+                ];
+            }
+        } else {
+            foreach ($functionList as $name) {
+                $meta[] = [
+                    'name' => (string) $name,
+                    'count' => 1,
+                ];
+            }
+        }
+
+        return $meta;
     }
 }

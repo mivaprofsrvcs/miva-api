@@ -260,7 +260,7 @@ class Client
         $response = $request->sendRequest($this->getUrl(), $this->auth, $this->getHeaders());
 
         // Save the function list names before clearing the request builder
-        $functionList = array_keys($this->getFunctionList());
+        $functionList = $this->getFunctionList();
 
         // Refresh request builder
         $this->refreshRequestBuilder();
