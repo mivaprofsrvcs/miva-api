@@ -59,14 +59,14 @@ class Request
      *
      * @var \Psr\Http\Message\RequestInterface|null
      */
-    protected RequestInterface|null $request = null;
+    protected ?RequestInterface $request = null;
 
     /**
      * The HTTP response instance.
      *
      * @var \Psr\Http\Message\ResponseInterface|null
      */
-    protected ResponseInterface|null $response = null;
+    protected ?ResponseInterface $response = null;
 
     /**
      * The API request builder instance.
@@ -163,7 +163,7 @@ class Request
     /**
      * Get the API request.
      */
-    public function request(): RequestInterface|null
+    public function request(): ?RequestInterface
     {
         return $this->request;
     }
@@ -171,7 +171,7 @@ class Request
     /**
      * Get the previous API response.
      */
-    public function response(): ResponseInterface|null
+    public function response(): ?ResponseInterface
     {
         return $this->response;
     }

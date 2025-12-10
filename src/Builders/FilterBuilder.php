@@ -23,11 +23,6 @@ use pdeans\Miva\Api\Contracts\BuilderInterface;
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 
-/**
- * FilterBuilder class
- *
- * Build a request Function filter.
- */
 class FilterBuilder implements BuilderInterface
 {
     /**
@@ -35,7 +30,7 @@ class FilterBuilder implements BuilderInterface
      *
      * @var string|null
      */
-    protected string|null $functionName;
+    protected ?string $functionName;
 
     /**
      * Filter name.
@@ -56,14 +51,14 @@ class FilterBuilder implements BuilderInterface
      *
      * @var GenericFilterBuilder|OnDemandColumnsFilterBuilder|ShowFilterBuilder|array
      */
-    protected GenericFilterBuilder|OnDemandColumnsFilterBuilder|ShowFilterBuilder|array $valueList;
+    protected GenericFilterBuilder|OnDemandColumnsFilterBuilder|ShowFilterBuilder|array $valueList = [];
 
     /**
      * Create a new filter builder instance.
      *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
-    public function __construct(string $name, mixed $value, string|null $functionName = null)
+    public function __construct(string $name, mixed $value, ?string $functionName = null)
     {
         $this->name = trim($name);
 
@@ -77,7 +72,6 @@ class FilterBuilder implements BuilderInterface
             throw new InvalidValueException('Invalid value provided for "value".');
         }
 
-        $this->valueList    = [];
         $this->functionName = $functionName;
     }
 

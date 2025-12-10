@@ -22,9 +22,6 @@ use pdeans\Miva\Api\Builders\FunctionBuilder;
 use pdeans\Miva\Api\Contracts\BuilderInterface;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 
-/**
- * RequestBuilder class
- */
 class RequestBuilder implements BuilderInterface
 {
     /**
@@ -32,14 +29,14 @@ class RequestBuilder implements BuilderInterface
      *
      * @var \pdeans\Miva\Api\Builders\FunctionBuilder|null
      */
-    public FunctionBuilder|null $function;
+    public ?FunctionBuilder $function = null;
 
     /**
      * API request function list.
      *
      * @var array
      */
-    protected array $functionList;
+    protected array $functionList = [];
 
     /**
      * Miva store code.
@@ -49,7 +46,8 @@ class RequestBuilder implements BuilderInterface
     public string $storeCode;
 
     /**
-     * Flag to determine if the Miva_Request_Timestamp parameter should be added to the request.
+     * Flag to determine if the Miva_Request_Timestamp
+     * parameter should be added to the request.
      *
      * @var bool
      */
@@ -65,11 +63,11 @@ class RequestBuilder implements BuilderInterface
         $this->storeCode = trim($storeCode);
 
         if ($this->storeCode === '') {
-            throw new MissingRequiredValueException('A valid store code value must be provided.');
+            throw new MissingRequiredValueException(
+                'A valid store code value must be provided.'
+            );
         }
 
-        $this->function = null;
-        $this->functionList = [];
         $this->addTimestamp = $addTimestamp;
     }
 

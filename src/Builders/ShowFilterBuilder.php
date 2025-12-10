@@ -20,9 +20,6 @@ namespace pdeans\Miva\Api\Builders;
 
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 
-/**
- * ShowFilterBuilder class
- */
 class ShowFilterBuilder extends FilterBuilder
 {
     /**
@@ -30,7 +27,7 @@ class ShowFilterBuilder extends FilterBuilder
      *
      * @var string|null
      */
-    protected string|null $functionName;
+    protected ?string $functionName;
 
     /**
      * List of valid API function names.

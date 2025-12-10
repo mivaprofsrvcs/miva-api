@@ -23,9 +23,6 @@ use JsonException;
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 use pdeans\Miva\Api\Exceptions\JsonSerializeException;
 
-/**
- * API Response class
- */
 class Response
 {
     /**
@@ -40,7 +37,7 @@ class Response
      *
      * @var array
      */
-    protected array $data;
+    protected array $data = [];
 
     /**
      * The API errors instance.
@@ -61,7 +58,7 @@ class Response
      *
      * @var bool|null
      */
-    protected bool|null $success;
+    protected ?bool $success = null;
 
     /**
      * Create a new API response instance.
@@ -75,10 +72,8 @@ class Response
         }
 
         $this->body = $responseBody;
-        $this->data = [];
         $this->errors = new stdClass();
         $this->functions = $requestFunctionsList;
-        $this->success = null;
 
         $this->parseResponseBody($responseBody);
     }
@@ -146,7 +141,7 @@ class Response
     /**
      * Get the API response data.
      */
-    public function getResponse(string|null $functionName = null): array
+    public function getResponse(?string $functionName = null): array
     {
         if (! is_null($functionName)) {
             return $this->getFunction($functionName);

@@ -58,14 +58,14 @@ class Client
      *
      * @var \pdeans\Miva\Api\Request|null
      */
-    protected Request|null $request;
+    protected ?Request $request;
 
     /**
      * Api RequestBuilder instance.
      *
      * @var \pdeans\Miva\Api\Builders\RequestBuilder|null
      */
-    protected RequestBuilder|null $requestBuilder;
+    protected ?RequestBuilder $requestBuilder;
 
     /**
      * Miva JSON API endpoint value.
@@ -102,7 +102,7 @@ class Client
     /**
      * Add API function to request function list.
      */
-    public function add(FunctionBuilder|null $function = null): static
+    public function add(?FunctionBuilder $function = null): static
     {
         if (! is_null($function)) {
             $this->requestBuilder->function = $function;
@@ -187,7 +187,7 @@ class Client
     /**
      * Get the previous request instance.
      */
-    public function getPreviousRequest(): RequestInterface|null
+    public function getPreviousRequest(): ?RequestInterface
     {
         return $this->request?->request();
     }
@@ -195,7 +195,7 @@ class Client
     /**
      * Get the previous response instance.
      */
-    public function getPreviousResponse(): ResponseInterface|null
+    public function getPreviousResponse(): ?ResponseInterface
     {
         return $this->request?->response();
     }

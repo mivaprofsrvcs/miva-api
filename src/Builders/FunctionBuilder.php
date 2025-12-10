@@ -34,14 +34,14 @@ class FunctionBuilder implements BuilderInterface
      *
      * @var int|null
      */
-    public int|null $count;
+    public ?int $count = null;
 
     /**
      * List of filter builder objects.
      *
      * @var \pdeans\Miva\Api\Builders\FilterBuilder[]
      */
-    public array $filterList;
+    public array $filterList = [];
 
     /**
      * Function name.
@@ -55,28 +55,28 @@ class FunctionBuilder implements BuilderInterface
      *
      * @var int|null
      */
-    public int|null $offset;
+    public ?int $offset = null;
 
     /**
      * Function parameter list.
      *
      * @var array
      */
-    public array $parameterList;
+    public array $parameterList = [];
 
     /**
      * Encryption passphrase.
      *
      * @var string|null
      */
-    public string|null $passphrase;
+    public ?string $passphrase = null;
 
     /**
      * Sort records modifier.
      *
      * @var string|null
      */
-    public string|null $sort;
+    public ?string $sort = null;
 
     /**
      * Create a new function builder instance.
@@ -90,12 +90,6 @@ class FunctionBuilder implements BuilderInterface
         }
 
         $this->name = $name;
-        $this->count = null;
-        $this->filterList = [];
-        $this->offset = null;
-        $this->parameterList = [];
-        $this->passphrase = null;
-        $this->sort = null;
     }
 
     /**
