@@ -98,3 +98,13 @@ function mivaClientConfig(): array
 
     return $config;
 }
+
+/**
+ * Retrieve a JSON fixture by name for test helpers.
+ */
+function responseFixture(string $name, string $directory = 'Responses'): string
+{
+    $path = __DIR__ . '/Fixtures/' . trim($directory, '/ ') . '/' . $name . '.json';
+
+    return (string) file_get_contents($path);
+}
