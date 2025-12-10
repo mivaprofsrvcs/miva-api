@@ -304,7 +304,7 @@ class Client
      */
     protected function validateOptions(array $options): array
     {
-        if (!isset($options['private_key'])) {
+        if (! isset($options['private_key'])) {
             throw new MissingRequiredValueException(
                 'Missing required option "private_key". Hint: Set the option value
                 to an empty string if accepting requests without a signature.'

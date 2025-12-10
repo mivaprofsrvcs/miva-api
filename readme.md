@@ -35,6 +35,7 @@ PHP library for interacting with the Miva JSON API.
 - [Helpers](#helpers)
     * [Troubleshooting Api Requests And Responses](#troubleshooting-api-requests-and-responses)
     * [Further Reading](#further-reading)
+- [Testing](#testing)
 
 ## Installation
 
@@ -515,3 +516,34 @@ var_dump($api->getFunctionList());
 ### Further Reading
 
 Having a general understanding of the [Miva JSON Api](https://docs.miva.com/json-api/) configuration and schema is highly recommended before using the library.
+
+## Testing
+
+Install dev dependencies:
+
+```
+composer install --dev
+```
+
+Copy the example environment file and provide valid credentials for a test store:
+
+```
+cp .env.example .env
+```
+
+Populate the following variables in `.env` (values are not committed):
+
+- `MIVA_API_URL`
+- `MIVA_API_STORE_CODE`
+- `MIVA_API_ACCESS_TOKEN`
+- `MIVA_API_PRIVATE_KEY`
+- `MIVA_API_HTTP_AUTH`
+- `MIVA_API_HTTP_CACHE`
+- `MIVA_API_HTTP_VERIFY` (set to `false` for dev certificates)
+- `MIVA_API_HTTP_HEADERS` (optional JSON map of extra headers)
+
+Run the test suite:
+
+```
+composer test
+```
