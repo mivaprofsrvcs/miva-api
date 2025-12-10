@@ -106,7 +106,7 @@ class Response
      *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
-    public function getData(string $functionName, int $index = 0): stdClass
+    public function getData(string $functionName, int $index = 0): array|object
     {
         if (! $this->isValidFunction($functionName)) {
             $this->throwInvalidFunctionError($functionName);
@@ -120,7 +120,11 @@ class Response
 
         $functionData = $this->data[$functionName][$index];
 
-        return $functionData->data ?? $functionData;
+        $payload = $functionData->data ?? $functionData;
+
+        return is_array($payload) || is_object($payload)
+            ? $payload
+            : (object) $payload;
     }
 
     /**
@@ -283,10 +287,9 @@ class Response
         }
 
         $success = isset($result->success) ? (bool) $result->success : false;
-        $data = $result->data ?? $result;
         $errors = $success ? new ErrorBag() : $this->buildErrorBag($functionName, $index, $result);
 
-        $this->data[$functionName][$index] = $data;
+        $this->data[$functionName][$index] = $result;
         $this->errors = $this->errors->merge($errors);
 
         if (! $success || $errors->has()) {
