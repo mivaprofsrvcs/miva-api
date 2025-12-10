@@ -20,6 +20,8 @@
         "guzzlehttp/guzzle": "^7.10"
     },
     "require-dev": {
+        "laravel/pint": "^1.16",
+        "phpstan/phpstan": "^1.11",
         "pestphp/pest": "^4.1",
         "symfony/var-dumper": "^7.4",
         "vlucas/phpdotenv": "^5.6"
@@ -34,9 +36,15 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true
         }
-	},
+    },
     "scripts": {
-        "test": "pest"
+        "test": "pest",
+        "phpstan": "phpstan analyse",
+        "pint": "pint --test",
+        "lint": [
+            "@phpstan",
+            "@pint"
+        ]
     },
     "minimum-stability": "stable",
     "prefer-stable": true
