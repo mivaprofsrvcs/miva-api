@@ -23,22 +23,22 @@ use pdeans\Miva\Api\Exceptions\InvalidValueException;
 class ShowFilterBuilder extends FilterBuilder
 {
     /**
+     * List of valid API function names.
+     *
+     * @var array
+     */
+    protected const FUNCTION_NAMES = [
+        'categorylist_load_query',
+        'categoryproductlist_load_query',
+        'productlist_load_query',
+    ];
+
+    /**
      * API function name.
      *
      * @var string|null
      */
     protected ?string $functionName;
-
-    /**
-     * List of valid API function names.
-     *
-     * @var array
-     */
-    protected static array $FUNCTION_NAMES = [
-        'categorylist_load_query',
-        'categoryproductlist_load_query',
-        'productlist_load_query',
-    ];
 
     /**
      * Show filter value.
@@ -90,7 +90,7 @@ class ShowFilterBuilder extends FilterBuilder
      */
     protected function isValidFunctionName(string $functionName): bool
     {
-        return (in_array(strtolower($functionName), self::$FUNCTION_NAMES));
+        return (in_array(strtolower($functionName), self::FUNCTION_NAMES));
     }
 
     /**

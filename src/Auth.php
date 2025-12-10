@@ -23,28 +23,26 @@ use pdeans\Miva\Api\Exceptions\InvalidValueException;
 final class Auth
 {
     /**
-     * API access token.
-     *
-     * @var string
-     */
-    private string $accessToken;
-
-    /**
      * API authentication header name.
-     *
-     * @var string
      */
-    private string $authHeaderName = 'X-Miva-API-Authorization';
+    private const AUTH_HEADER_NAME = 'X-Miva-API-Authorization';
 
     /**
      * List of valid HMAC types.
      *
      * @var array
      */
-    private array $hmacList = [
+    private const HMAC_LIST = [
         'sha1',
         'sha256',
     ];
+
+    /**
+     * API access token.
+     *
+     * @var string
+     */
+    private string $accessToken;
 
     /**
      * API request HMAC signature.
@@ -83,7 +81,7 @@ final class Auth
      */
     public function createAuthHeader(string $data): string
     {
-        return sprintf('%s: %s', $this->authHeaderName, $this->createAuthHeaderValue($data));
+        return sprintf('%s: %s', self::AUTH_HEADER_NAME, $this->createAuthHeaderValue($data));
     }
 
     /**
@@ -118,7 +116,7 @@ final class Auth
      */
     public function getAuthHeader(string $data): array
     {
-        return [$this->authHeaderName => $this->createAuthHeaderValue($data)];
+        return [self::AUTH_HEADER_NAME => $this->createAuthHeaderValue($data)];
     }
 
     /**
@@ -131,12 +129,12 @@ final class Auth
         } else {
             $hmacTypeFormatted = strtolower($hmacType);
 
-            if (!in_array($hmacTypeFormatted, $this->hmacList)) {
+            if (!in_array($hmacTypeFormatted, self::HMAC_LIST)) {
                 throw new InvalidValueException(
                     sprintf(
                         'Invalid HMAC type "%s" provided. Valid HMAC types: "%s".',
                         $hmacType,
-                        implode('", "', $this->hmacList)
+                        implode('", "', self::HMAC_LIST)
                     )
                 );
             }

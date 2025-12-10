@@ -24,36 +24,22 @@ use pdeans\Miva\Api\Exceptions\InvalidValueException;
 class SearchFilterBuilder extends FilterBuilder
 {
     /**
-     * Filter search field.
-     *
-     * @var string
-     */
-    public string $field;
-
-    /**
      * List of valid NULL search operators.
      *
      * @var array
      */
-    protected static array $NULL_OPERATORS = [
+    protected const NULL_OPERATORS = [
         'TRUE',
         'FALSE',
         'NULL',
     ];
 
     /**
-     * Filter search operator.
-     *
-     * @var string
-     */
-    public string $operator;
-
-    /**
      * List of valid search operators.
      *
      * @var array
      */
-    protected static array $OPERATORS = [
+    protected const OPERATORS = [
         'EQ',
         'GT',
         'GE',
@@ -70,6 +56,20 @@ class SearchFilterBuilder extends FilterBuilder
         'IN',
         'SUBWHERE',
     ];
+
+    /**
+     * Filter search field.
+     *
+     * @var string
+     */
+    public string $field;
+
+    /**
+     * Filter search operator.
+     *
+     * @var string
+     */
+    public string $operator;
 
     /**
      * Filter search value.
@@ -93,11 +93,11 @@ class SearchFilterBuilder extends FilterBuilder
 
         $this->operator = strtoupper($operator);
 
-        if (!in_array($this->operator, self::$OPERATORS)) {
+        if (!in_array($this->operator, self::OPERATORS)) {
             throw new InvalidValueException('Invalid operator "' . $operator . '" provided.');
         }
 
-        if (is_null($value) && !in_array($this->operator, self::$NULL_OPERATORS)) {
+        if (is_null($value) && !in_array($this->operator, self::NULL_OPERATORS)) {
             throw new InvalidValueException('Invalid value provided for "value".');
         }
 
@@ -109,7 +109,7 @@ class SearchFilterBuilder extends FilterBuilder
      */
     public static function getNullOperators(): array
     {
-        return self::$NULL_OPERATORS;
+        return self::NULL_OPERATORS;
     }
 
     /**
@@ -141,7 +141,7 @@ class SearchFilterBuilder extends FilterBuilder
      */
     public static function getOperators(): array
     {
-        return self::$OPERATORS;
+        return self::OPERATORS;
     }
 
     /**
