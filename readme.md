@@ -1,18 +1,18 @@
 <!--
-  Title: Miva JSON Api PHP Library
+  Title: Miva JSON API PHP Library
   Description: PHP library for interacting with the Miva JSON API.
   Keywords: Miva, Merchant, json, api
   Author: pdeans
-  -->
+-->
 
-## Miva JSON Api PHP Library
+## Miva JSON API PHP Library
 
 PHP library for interacting with the Miva JSON API.
 
 ### Table Of Contents
 
 - [Installation](#installation)
-- [Configuring the Api Client](#configuring-the-api-client)
+- [Configuring the API Client](#configuring-the-api-client)
     * [Client Configuration Options](#client-configuration-options)
 - [Authentication](#authentication)
 - [JSON Request Format](#json-request-format)
@@ -33,11 +33,16 @@ PHP library for interacting with the Miva JSON API.
     - [Checking For Request Errors](#checking-for-request-errors)
     - [Response Body](#response-body)
 - [Helpers](#helpers)
-    * [Troubleshooting Api Requests And Responses](#troubleshooting-api-requests-and-responses)
+    * [Troubleshooting API Requests And Responses](#troubleshooting-api-requests-and-responses)
     * [Further Reading](#further-reading)
 - [Testing](#testing)
 
 ## Installation
+
+Requirements:
+
+- PHP 8.3+
+- ext-json
 
 Install via [Composer](https://getcomposer.org/).
 
@@ -45,22 +50,26 @@ Install via [Composer](https://getcomposer.org/).
 $ composer require pdeans/miva-api
 ```
 
-## Configuring the Api Client
+## Configuring the API Client
 
-Utilizing the library to interact with the Api is accomplished via the `Client` class. The `Client` class accepts an array containing Api and HTTP client (cURL) configuration options in key/value format.
+Utilizing the library to interact with the API is accomplished via the `Client` class. The `Client` class accepts an array containing API and HTTP client ([Guzzle](https://docs.guzzlephp.org/en/stable/)) configuration options in key/value format.
 
 ### Client Configuration Options
 
 Key | Required | Type | Description
 ----|:--------:|:----:|------------
-url | **Yes** | string | The Api endpoint URL.
+url | **Yes** | string | The API endpoint URL.
 store_code | **Yes** | string | The Miva store code.
-access_token | **Yes** | string | The Api access token.
-private_key | **Yes** | string | The Api private key. **Hint:** If omitting signature validation, pass in an `''` empty string literal value.
-hmac | No | string | HMAC signature type. Defaults to sha256. Valid types are one of: `sha256`, `sha1`, `''` (Enter a blank string literal if omitting signature validation).
-timestamp | No | boolean | Enable/disable Api request timestamp validation. Defaults to true (Enabled).
-http_headers | No | array | HTTP request headers. Note that the library will automatically send the `Content-Type: application/json` and `X-Miva-API-Authorization` headers with each Api request. For this reason, these headers should not be included in this list.
-http_client | No | array | Associative array of [curl options](https://php.net/curl_setopt).
+access_token | **Yes** | string | The API access token.
+private_key | **Yes** | string | The API signature key. **Hint:** If omitting signature validation, pass in an `''` empty string literal value.
+hmac | No | string | HMAC signature type. Defaults to `sha256`. Valid types are `sha256`, `sha1`, or `''` (blank string literal to disable HMAC; header becomes `MIVA <token>`).
+timestamp | No | boolean | Enable/disable API request timestamp validation. Defaults to true (Enabled).
+timeout | No | int | Override default 60s Miva request timeout. Sends `X-Miva-API-Timeout` header.
+binary_encoding | No | string | `json` (default) or `base64`. Sends `X-Miva-API-Binary-Encoding` header when not `json`.
+range | No | string | Range header value for multi-call retries (e.g., `Operations=4-5`).
+ssh_auth | No | array | SSH authentication (takes precedence over token authentication when present): `['username' => string, 'private_key' => string, 'algorithm' => 'sha256'|'sha512']`.
+http_headers | No | array | HTTP request headers to merge. The library automatically sets the following default headers for every request: `Content-Type`, `Accept`, `User-Agent`, and the appropriate auth header. These headers should not be included in this list.
+http_client | No | array | Associative array of [Guzzle request options](https://docs.guzzlephp.org/en/stable/request-options.html), or an instance of `GuzzleHttp\ClientInterface`.
 
 Example:
 
@@ -68,41 +77,45 @@ Example:
 use pdeans\Miva\Api\Client;
 
 $api = new Client([
-    'url'          => 'https://www.domain.com/mm5/json.mvc',
-    'store_code'   => 'PS',
-    'access_token' => '0f90f77b58ca98836eba3d50f526f523',
-    'private_key'  => '12345privatekey',
+    'url'             => 'https://www.domain.com/mm5/json.mvc',
+    'store_code'      => 'PS',
+    'access_token'    => '0f90f77b58ca98836eba3d50f526f523',
+    'private_key'     => 'private-key',
+    'timeout'         => 100,
+    'binary_encoding' => 'json',
 ]);
 
-// Example with Basic Authentication header and curl options
+// Example with Basic Authentication header and Guzzle options
 $api = new Client([
     'url'          => 'https://www.domain.com/mm5/json.mvc',
     'store_code'   => 'PS',
     'access_token' => '0f90f77b58ca98836eba3d50f526f523',
-    'private_key'  => '12345privatekey',
+    'private_key'  => 'private-key',
     'http_headers' => [
         'Authorization' => 'Basic ' . base64_encode('username:password'),
         'Connection'    => 'close',
         'Cache-Control' => 'no-cache',
     ],
     'http_client' => [
-        CURLOPT_SSL_VERIFYPEER => 0,
-        CURLOPT_SSL_VERIFYHOST => 0,
+        'verify' => false,
     ],
 ]);
 ```
 
 ## Authentication
 
-The Miva Api authorization header will be automatically generated based on the configuration settings passed into the `Client` object and sent along with each Api request. The configuration settings should match the Miva store settings for the given Api token.
+The Miva API authorization header is generated based on the configuration:
+
+- **Token authentication** (default): `X-Miva-API-Authorization` is built as `MIVA-HMAC-SHA256 <token>:<signature>` (or `SHA1`). If `hmac` or `private_key` is an empty string, the header becomes `MIVA <token>` with no HMAC signature.
+- **SSH authentication**: `X-Miva-API-Authentication` is built as `SSH-RSA-SHA2-256|SHA2-512 <username>:<signature>`. When `ssh_auth` is provided, SSH auth is used and supersedes token auth.
 
 ## JSON Request Format
 
-The required `Miva_Request_Timestamp` and `Store_Code` properties are automatically generated based on the configuration settings passed into the `Client` object and added to the JSON body for every Api request. The `Function` property is also automatically added to the JSON body for every request. The JSON data generated for the `Function` property will vary based on the provided request function list.
+The required `Miva_Request_Timestamp` and `Store_Code` properties are automatically generated based on the configuration settings passed into the `Client` object and added to the JSON body for every API request. The `Function` property is also automatically added to the JSON body for every request. The JSON data generated for the `Function` property will vary based on the provided request function list.
 
 ## Function Builder
 
-The `func` method is used to generate Api request functions. The method accepts the request function name as its only argument.
+The `func` method is used to generate API request functions. The method accepts the request function name as its only argument.
 
 The `add` method is used to "publish" the function and append it to the request function list.
 
@@ -139,7 +152,7 @@ The available search/display helper methods are covered below.
 
 ##### Search
 
-The `search` method may be used to attach a search filter to a function's filter list. The most basic call to `search` requires three arguments. The first argument is the search field column. The second argument is the search operator, which can be any of the supported Api [search operators](https://docs.miva.com/json-api/list-load-query-overview#filter-list-parameters). Finally, the third argument is the value to evaluate against the search column.
+The `search` method may be used to attach a search filter to a function's filter list. The most basic call to `search` requires three arguments. The first argument is the search field column. The second argument is the search operator, which can be any of the supported API [search operators](https://docs.miva.com/json-api/list-load-query-overview#filter-list-parameters). Finally, the third argument is the value to evaluate against the search column.
 
 Below is an example to issue a search filter for a specific product code:
 
@@ -346,11 +359,17 @@ $api->func('OrderShipmentList_Update')
 
 ## API Requests
 
-This section covers configuring and issuing Api requests.
+This section covers configuring and issuing API requests.
 
 ### HTTP Headers
 
-You may specify which HTTP headers are attached to all Api requests with the `addHeader` and `addHeaders` methods. Please note that the library automatically creates and attaches the `Content-Type: application/json` and `X-Miva-API-Authorization` headers to each Api request.
+You may specify which HTTP headers are attached to all API requests with the `addHeader` and `addHeaders` methods. By default the library sets:
+
+- `Content-Type: application/json`
+- `Accept: application/json`
+- `User-Agent: mivaprofsrvcs-miva-api/<version>`
+- The appropriate auth header (`X-Miva-API-Authorization` for token auth or `X-Miva-API-Authentication` for SSH auth)
+- Optional headers when configured: `X-Miva-API-Timeout`, `X-Miva-API-Binary-Encoding`, and `Range`.
 
 ```php
 // Add single header at a time
@@ -366,7 +385,7 @@ $api->addHeaders([
 
 ### Sending Requests
 
-The `send` method will issue an Api request, and return the results in the library's `Response` object. If you wish to bypass this object and return the raw JSON response from the Api, pass a `true` value as the first argument for the `send` method.
+The `send` method will issue an API request, and return the results in the library's `Response` object. If you wish to bypass this object and return the raw JSON response from the API, pass a `true` value as the first argument for the `send` method.
 
 Example requests:
 
@@ -383,7 +402,7 @@ $api->func('CategoryList_Load_Query')
     ->filter('Category_Show', 'Active')
     ->add();
 
-// Issue Api request - returns \pdeans\Miva\Api\Response object
+// Issue API request - returns \pdeans\Miva\Api\Response object
 $response = $api->send();
 
 // Alternatively - returns raw JSON response
@@ -398,18 +417,23 @@ echo '<pre>', $api->getRequestBody(), '</pre>';
 
 ## API Responses
 
-By default, Api responses will return a `pdeans\Miva\Api\Response` class instance. The `Response` object includes a number of helper methods for interacting with the Api responses.
+By default, API responses will return a `pdeans\Miva\Api\Response` class instance. The `Response` object includes a number of helper methods for interacting with the API responses.
 
 ### Checking For Request Errors
 
-Checking for errors that may have occurred on the Api request can be accomplished with the `getErrors` method. This method will return a `stdClass` object containing the error code and error message thrown. The `isSuccess` method returns a boolean value which can be used as a flag to determine if a request error occurred:
+Use `hasErrors()` to check for any errors across functions/iterations/operations. The `errors()` method returns an `ErrorBag` with helpers such as `all()`, `messages()`, and `forField('Field_Name')`. `successful()` indicates if any result succeeded; `failed()` is the inverse. Mixed success/failure responses (e.g., operations with some errors) will still report `successful()` true but `hasErrors()` true.
 
 ```php
 $response = $api->func('ProductList_Load_Query')->add()->send();
-var_dump($response->getErrors());
 
-if (!$response->isSuccess()) {
-   echo 'Error: ', $response->getErrors()->message;
+if ($response->failed()) {
+   echo 'Top-level request failed';
+}
+
+if ($response->hasErrors()) {
+   foreach ($response->errors()->messages() as $message) {
+       echo $message, PHP_EOL;
+   }
 }
 ```
 
@@ -418,12 +442,12 @@ if (!$response->isSuccess()) {
 The raw JSON response body can be retrieved anytime using the `getBody` method:
 
 ```php
-// Print raw JSON Api response
+// Print raw JSON API response
 $response = $api->func('ProductList_Load_Query')->add()->send();
 echo '<pre>', $response->getBody(), '</pre>';
 ```
 
-To receive an iterable form of the Api response, issue the `getResponse` method. This will return an array of objects, with the array keys mapping to the function names supplied to the Api request function list. The items are sorted in identical order to the Api request function list. Each item or "function", contains its own array of the results of the function request. These array items correlate to each of the function's iterations that were sent in the request. The items are sorted in the same order that they were issued in the request. Use the `getFunctions` method to retrieve the list of available functions.
+To receive an iterable form of the API response, issue the `getResponse` method. This will return an array of objects, with the array keys mapping to the function names supplied to the API request function list. The items are sorted in identical order to the API request function list. Each item or "function", contains its own array of the results of the function request. These array items correlate to each of the function's iterations that were sent in the request. The items are sorted in the same order that they were issued in the request. Use the `getFunctions` method to retrieve the list of available functions.
 
 The `getFunction` method may be used to explicitly return the response results for a specific function name. This can also be accomplished with the `getResponse` method by passing the function name as the first argument.
 
@@ -479,9 +503,9 @@ var_dump($response->getData('ProductList_Load_Query', 2));
 
 This section covers library helper methods.
 
-### Troubleshooting Api Requests And Responses
+### Troubleshooting API Requests And Responses
 
-To aid in troubleshooting Api requests and responses, [PSR-7 Request](https://www.php-fig.org/psr/psr-7/) and [PSR-7 Response](https://www.php-fig.org/psr/psr-7/) objects can be obtained using the `getPreviousRequest` and `getPreviousResponse` methods respectively after an Api request has been issued:
+To aid in troubleshooting API requests and responses, [PSR-7 Request](https://www.php-fig.org/psr/psr-7/) and [PSR-7 Response](https://www.php-fig.org/psr/psr-7/) objects can be obtained using the `getPreviousRequest` and `getPreviousResponse` methods respectively after an API request has been issued:
 
 ```php
 // Add functions to request function list
@@ -489,7 +513,7 @@ $api->func('ProductList_Load_Query')->add();
 $api->func('OrderCustomFieldList_Load')->add();
 $response = $api->send();
 
-// Output Api request authentication header value
+// Output API request authentication header value
 echo $api->getPreviousRequest()->getHeader('X-Miva-API-Authorization')[0];
 
 // Output the response HTTP status line
@@ -497,10 +521,10 @@ $prevResponse = $api->getPreviousResponse();
 echo $prevResponse->getStatusCode(), ' ', $prevResponse->getReasonPhrase();
 ```
 
-Furthermore, the `getUrl`, `getHeaders`, and `getFunctionList` methods may be used to inspect and troubleshoot requests before they are sent off to the Api:
+Furthermore, the `getUrl`, `getHeaders`, and `getFunctionList` methods may be used to inspect and troubleshoot requests before they are sent off to the API:
 
 ```php
-// Output Api endpoint url
+// Output API endpoint url
 echo $api->getUrl();
 
 // Output request header list
@@ -515,14 +539,14 @@ var_dump($api->getFunctionList());
 
 ### Further Reading
 
-Having a general understanding of the [Miva JSON Api](https://docs.miva.com/json-api/) configuration and schema is highly recommended before using the library.
+Having a general understanding of the [Miva JSON API](https://docs.miva.com/json-api/) configuration and schema is highly recommended before using the library.
 
 ## Testing
 
 Install dev dependencies:
 
 ```
-composer install --dev
+composer install
 ```
 
 Copy the example environment file and provide valid credentials for a test store:
@@ -542,8 +566,25 @@ Populate the following variables in `.env` (values are not committed):
 - `MIVA_API_HTTP_VERIFY` (set to `false` for dev certificates)
 - `MIVA_API_HTTP_HEADERS` (optional JSON map of extra headers)
 
+Optional for SSH auth testing:
+
+- `MIVA_API_SSH_USERNAME`
+- `MIVA_API_SSH_PRIVATE_KEY_PATH`
+- `MIVA_API_SSH_ALGORITHM`
+- `MIVA_API_SSH_LIVE`
+
 Run the test suite:
 
-```
+```bash
 composer test
+```
+
+Static analysis and style checks:
+
+```bash
+composer phpstan
+composer pint
+
+# Run both commands (phpstan & pint)
+composer lint
 ```
