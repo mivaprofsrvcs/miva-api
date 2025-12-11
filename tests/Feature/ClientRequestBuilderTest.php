@@ -5,6 +5,7 @@ declare(strict_types=1);
 use pdeans\Miva\Api\Client;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 use pdeans\Miva\Api\Auth;
+use pdeans\Miva\Api\Response as ApiResponse;
 use pdeans\Miva\Api\SshAuth;
 use Tests\Support\FakeGuzzleClient;
 use Psr\Http\Message\RequestInterface;
@@ -196,6 +197,8 @@ it('parses partial responses with content range headers', function (): void {
 
     $client->func('ProductList_Load_Query')->count(1)->add();
     $response = $client->send();
+
+    assert($response instanceof ApiResponse);
 
     expect($response->getStatusCode())->toBe(206);
     expect($response->isPartial())->toBeTrue();

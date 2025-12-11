@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use pdeans\Miva\Api\Client;
+use pdeans\Miva\Api\Response;
 
 // Only register this live test when explicitly enabled.
 if (! filter_var((string) env('MIVA_API_SSH_LIVE', ''), FILTER_VALIDATE_BOOL)) {
@@ -22,6 +23,8 @@ it('performs a product list query using ssh authentication when configured', fun
         ->count(1)
         ->add()
         ->send();
+
+    assert($response instanceof Response);
 
     expect($response->successful())->toBeTrue();
 

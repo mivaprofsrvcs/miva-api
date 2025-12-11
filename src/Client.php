@@ -362,6 +362,8 @@ class Client
      * Validate the client configuration options.
      *
      * @param array<string, mixed> $options
+     * @param array{bool, bool}|null $capabilities
+     *
      * @throws \pdeans\Miva\Api\Exceptions\MissingRequiredValueException
      */
     protected function validateOptions(array $options, ?array $capabilities = null): void
@@ -478,6 +480,7 @@ class Client
      * Configure options from provided configuration.
      *
      * @param array<string, mixed> $options
+     * @param array{bool, bool}|null $capabilities
      */
     protected function configureOptions(array $options, ?array $capabilities = null): void
     {

@@ -25,6 +25,18 @@ function env(string $key, mixed $default = null): mixed
 }
 
 /**
+ * Safely skip a test when prerequisites are missing.
+ */
+function skipTest(string $message): void
+{
+    $pending = test();
+
+    if (method_exists($pending, 'skip')) {
+        $pending->skip($message);
+    }
+}
+
+/**
  * Build a client configuration array from environment variables
  * or skip tests when missing.
  *
@@ -44,9 +56,7 @@ function mivaClientConfig(): array
     );
 
     if (! empty($missing)) {
-        /** @var \Pest\PendingCalls\TestCall $pending */
-        $pending = test();
-        $pending->markTestSkipped('Missing environment variables: ' . implode(', ', $missing));
+        skipTest('Missing environment variables: ' . implode(', ', $missing));
 
         return [];
     }
@@ -120,13 +130,13 @@ function mivaSshClientConfig(): array
     $privateKeyPath = (string) env('MIVA_API_SSH_PRIVATE_KEY_PATH', '');
 
     if ($privateKeyPath === '') {
-        test()->markTestSkipped('Missing SSH private key path: set MIVA_API_SSH_PRIVATE_KEY_PATH.');
+        skipTest('Missing SSH private key path: set MIVA_API_SSH_PRIVATE_KEY_PATH.');
 
         return [];
     }
 
     if (! is_readable($privateKeyPath)) {
-        test()->markTestSkipped('SSH private key file is not readable: ' . $privateKeyPath);
+        skipTest('SSH private key file is not readable: ' . $privateKeyPath);
 
         return [];
     }
@@ -134,7 +144,7 @@ function mivaSshClientConfig(): array
     $fileContents = file_get_contents($privateKeyPath);
 
     if ($fileContents === false) {
-        test()->markTestSkipped('Unable to read SSH private key file: ' . $privateKeyPath);
+        skipTest('Unable to read SSH private key file: ' . $privateKeyPath);
 
         return [];
     }
@@ -169,9 +179,7 @@ function mivaSshClientConfig(): array
     );
 
     if (! empty($missing)) {
-        /** @var \Pest\PendingCalls\TestCall $pending */
-        $pending = test();
-        $pending->markTestSkipped('Missing environment variables: ' . implode(', ', $missing));
+        skipTest('Missing environment variables: ' . implode(', ', $missing));
 
         return [];
     }
