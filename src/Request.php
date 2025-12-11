@@ -33,6 +33,11 @@ use Psr\Http\Message\ResponseInterface;
 class Request
 {
     /**
+     * Default timeout for a single Miva request (in seconds).
+     */
+    public const DEFAULT_TIMEOUT = 60;
+
+    /**
      * API request body.
      *
      * @var string
@@ -45,13 +50,6 @@ class Request
      * @var \GuzzleHttp\ClientInterface
      */
     protected ClientInterface $client;
-
-    /**
-     * API request headers.
-     *
-     * @var array<string, string>
-     */
-    protected array $headers;
 
     /**
      * The HTTP request instance.
@@ -82,13 +80,33 @@ class Request
     protected static ?string $version = null;
 
     /**
+     * Timeout override header value in seconds.
+     *
+     * @var int|null
+     */
+    protected ?int $timeoutHeader = null;
+
+    /**
+     * Binary encoding header value.
+     *
+     * @var string|null
+     */
+    protected ?string $binaryEncoding = null;
+
+    /**
+     * Range header value for multi-call operations.
+     *
+     * @var string|null
+     */
+    protected ?string $rangeHeader = null;
+
+    /**
      * Create a new API request instance.
      *
      * @param ClientInterface|array<string, mixed>|null $client
      */
     public function __construct(RequestBuilder $requestBuilder, ClientInterface|array|null $client = null)
     {
-        $this->headers = $this->defaultHeaders();
         $this->client = $this->resolveClient($client);
 
         $this->setRequestBuilder($requestBuilder);
@@ -194,17 +212,13 @@ class Request
      *
      * @param array<string, string> $httpHeaders
      */
-    public function sendRequest(string $url, Auth $auth, array $httpHeaders = []): ResponseInterface
+    public function sendRequest(string $url, Auth|SshAuth|null $auth, array $httpHeaders = []): ResponseInterface
     {
         $this->response = null;
 
         $body = $this->getBody();
 
-        $headers = array_merge(
-            $this->headers,
-            $httpHeaders,
-            $auth->getAuthHeader($body)
-        );
+        $headers = $this->buildHeaders($httpHeaders, $auth, $body);
 
         $this->request = new PsrRequest('POST', $url, $headers, $body);
 
@@ -221,6 +235,36 @@ class Request
     public function setRequestBuilder(RequestBuilder $requestBuilder): static
     {
         $this->requestBuilder = $requestBuilder;
+
+        return $this;
+    }
+
+    /**
+     * Set the timeout header value.
+     */
+    public function setTimeoutHeader(?int $timeout): static
+    {
+        $this->timeoutHeader = $timeout;
+
+        return $this;
+    }
+
+    /**
+     * Set the binary encoding header value.
+     */
+    public function setBinaryEncoding(?string $encoding): static
+    {
+        $this->binaryEncoding = $encoding;
+
+        return $this;
+    }
+
+    /**
+     * Set the range header value.
+     */
+    public function setRangeHeader(?string $range): static
+    {
+        $this->rangeHeader = $range;
 
         return $this;
     }
@@ -249,5 +293,40 @@ class Request
         }
 
         return new Client([]);
+    }
+
+    /**
+     * Build headers for the request.
+     *
+     * @param array<string, string> $httpHeaders
+     * @param \pdeans\Miva\Api\Auth|\pdeans\Miva\Api\SshAuth|null $auth
+     * @param string $body
+     * @return array<string, string>
+     */
+    protected function buildHeaders(array $httpHeaders, Auth|SshAuth|null $auth, string $body): array
+    {
+        $headers = $this->defaultHeaders();
+
+        if ($this->timeoutHeader !== null && $this->timeoutHeader !== self::DEFAULT_TIMEOUT) {
+            $headers['X-Miva-API-Timeout'] = (string) $this->timeoutHeader;
+        }
+
+        if ($this->binaryEncoding !== null) {
+            $headers['X-Miva-API-Binary-Encoding'] = $this->binaryEncoding;
+        }
+
+        if ($this->rangeHeader !== null) {
+            $headers['Range'] = $this->rangeHeader;
+        }
+
+        if ($httpHeaders) {
+            $headers = array_merge($headers, $httpHeaders);
+        }
+
+        if ($auth !== null) {
+            $headers = array_merge($headers, $auth->getAuthHeader($body));
+        }
+
+        return $headers;
     }
 }

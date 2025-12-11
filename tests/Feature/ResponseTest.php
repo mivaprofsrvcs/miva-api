@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use pdeans\Miva\Api\Response;
-use stdClass;
 
 it('parses a successful list load query response', function (): void {
     $response = new Response(
@@ -15,7 +14,7 @@ it('parses a successful list load query response', function (): void {
     expect($response->hasErrors())->toBeFalse();
     expect($response->getFunctions())->toContain('ProductList_Load_Query');
 
-    /** @var stdClass $data */
+    /** @var \stdClass $data */
     $data = $response->getData('ProductList_Load_Query');
 
     expect($data->total_count)->toBe(117);
@@ -31,7 +30,7 @@ it('parses a successful list load response', function (): void {
 
     expect($response->successful())->toBeTrue();
     expect($response->hasErrors())->toBeFalse();
-    /** @var array<int, stdClass> $data */
+    /** @var array<int, \stdClass> $data */
     $data = $response->getData('OrderCustomFieldList_Load');
 
     expect($data)->toBeArray();
@@ -47,7 +46,7 @@ it('parses iteration responses for a single function', function (): void {
 
     expect($response->successful())->toBeTrue();
     expect($response->getFunction('Product_Insert'))->toHaveCount(2);
-    /** @var stdClass $insertData */
+    /** @var \stdClass $insertData */
     $insertData = $response->getData('Product_Insert', 1);
     expect($insertData->code)->toBe('new-product-2');
 });
@@ -59,7 +58,7 @@ it('parses single insert response', function (): void {
     );
 
     expect($response->successful())->toBeTrue();
-    /** @var stdClass $insert */
+    /** @var \stdClass $insert */
     $insert = $response->getData('Product_Insert');
     expect($insert->code)->toBe('new-product');
 });
@@ -118,4 +117,20 @@ it('parses mixed operations with iterations and successes', function (): void {
     expect($response->successful())->toBeTrue();
     expect($response->hasErrors())->toBeFalse();
     expect($response->getFunction('ProductList_Load_Query'))->toHaveCount(2);
+});
+
+it('parses content range header from partial responses', function (): void {
+    $response = new Response(
+        ['ProductList_Load_Query'],
+        responseFixture('product_list_load_query_success'),
+        206,
+        ['Content-Range' => ['3/5']]
+    );
+
+    expect($response->isPartial())->toBeTrue();
+    expect($response->getStatusCode())->toBe(206);
+    expect($response->getContentRange())->toBe([
+        'completed_operations' => 3,
+        'total_operations' => 5,
+    ]);
 });

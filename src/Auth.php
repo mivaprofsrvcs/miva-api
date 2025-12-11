@@ -27,17 +27,14 @@ final class Auth
     /**
      * API authentication header name.
      */
-    private const AUTH_HEADER_NAME = 'X-Miva-API-Authorization';
+    public const AUTH_HEADER_NAME = 'X-Miva-API-Authorization';
 
     /**
      * List of valid HMAC types.
      *
      * @var string[]
      */
-    private const HMAC_LIST = [
-        'sha1',
-        'sha256',
-    ];
+    private const HMAC_LIST = ['sha1', 'sha256'];
 
     /**
      * API access token.

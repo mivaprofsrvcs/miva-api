@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use pdeans\Miva\Api\Client;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
+use pdeans\Miva\Api\SshAuth;
 use Tests\Support\FakeGuzzleClient;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use GuzzleHttp\Psr7\Response as GuzzleResponse;
 
 it('builds iterations for a single function request', function (): void {
     $client = new Client([
@@ -122,4 +124,82 @@ it('captures previous request and response after send', function (): void {
 
     expect($client->getPreviousRequest())->toBeInstanceOf(RequestInterface::class);
     expect($client->getPreviousResponse())->toBeInstanceOf(ResponseInterface::class);
+});
+
+it('adds timeout, binary encoding, and range headers when configured', function (): void {
+    $guzzleMock = new FakeGuzzleClient();
+
+    $client = new Client([
+        'url' => 'https://example.test/mm5/json.mvc',
+        'store_code' => 'PS',
+        'access_token' => 'token',
+        'private_key' => 'key',
+        'http_client' => $guzzleMock,
+        'timestamp' => false,
+    ]);
+
+    $client->setTimeout(100)
+        ->setBinaryEncoding('base64')
+        ->setOperationsRange(4, 5);
+
+    $client->func('ProductList_Load_Query')->count(1)->add();
+    $client->send(true);
+
+    $headers = $guzzleMock->captured?->getHeaders() ?? [];
+
+    expect($headers['X-Miva-API-Timeout'][0] ?? null)->toBe('100');
+    expect($headers['X-Miva-API-Binary-Encoding'][0] ?? null)->toBe('base64');
+    expect($headers['Range'][0] ?? null)->toBe('Operations=4-5');
+});
+
+it('builds an SSH authentication header', function (): void {
+    $guzzleMock = new FakeGuzzleClient();
+
+    $client = new Client([
+        'url' => 'https://example.test/mm5/json.mvc',
+        'store_code' => 'PS',
+        'access_token' => 'token',
+        'private_key' => 'key',
+        'http_client' => $guzzleMock,
+        'timestamp' => false,
+    ]);
+
+    $client->setSshAuth('ssh-user', 'ssh-private-key', 'sha256');
+
+    $client->func('ProductList_Load_Query')->count(1)->add();
+    $client->send(true);
+
+    $body = (string) ($guzzleMock->captured?->getBody() ?? '');
+    $headers = $guzzleMock->captured?->getHeaders() ?? [];
+    $signature = base64_encode(hash_hmac('sha256', $body, 'ssh-private-key', true));
+    $expected = 'SSH-RSA-SHA2-256 ssh-user:' . $signature;
+
+    expect($headers[SshAuth::AUTH_HEADER_NAME][0] ?? null)->toBe($expected);
+});
+
+it('parses partial responses with content range headers', function (): void {
+    $guzzleMock = new FakeGuzzleClient(new GuzzleResponse(
+        206,
+        ['Content-Range' => '3/5'],
+        '{"success":1,"data":{"total_count":0,"start_offset":0,"data":[]}}'
+    ));
+
+    $client = new Client([
+        'url' => 'https://example.test/mm5/json.mvc',
+        'store_code' => 'PS',
+        'access_token' => 'token',
+        'private_key' => 'key',
+        'http_client' => $guzzleMock,
+        'timestamp' => false,
+    ]);
+
+    $client->func('ProductList_Load_Query')->count(1)->add();
+    $response = $client->send();
+
+    expect($response->getStatusCode())->toBe(206);
+    expect($response->isPartial())->toBeTrue();
+    expect($response->getContentRange())->toBe([
+        'completed_operations' => 3,
+        'total_operations' => 5,
+    ]);
 });

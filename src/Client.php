@@ -23,6 +23,7 @@ namespace pdeans\Miva\Api;
 use pdeans\Miva\Api\Builders\FunctionBuilder;
 use pdeans\Miva\Api\Builders\RequestBuilder;
 use pdeans\Miva\Api\Exceptions\InvalidMethodCallException;
+use pdeans\Miva\Api\Exceptions\InvalidValueException;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -43,11 +44,28 @@ use Psr\Http\Message\ResponseInterface;
 class Client
 {
     /**
+     * Supported binary encoding values.
+     *
+     * @var string[]
+     */
+    private const BINARY_ENCODINGS = ['json', 'base64'];
+
+    /**
      * Api Auth instance.
      *
-     * @var \pdeans\Miva\Api\Auth
+     * @var \pdeans\Miva\Api\Auth|\pdeans\Miva\Api\SshAuth|null
      */
-    protected Auth $auth;
+    protected Auth|SshAuth|null $auth = null;
+
+    /**
+     * Preferred payload encoding for the request body.
+     *
+     * Supports 'json' or 'base64', corresponding to the
+     * X-Miva-API-Binary-Encoding header.
+     *
+     * @var string|null
+     */
+    protected ?string $binaryEncoding = null;
 
     /**
      * List of API HTTP request headers.
@@ -64,6 +82,16 @@ class Client
     protected array $options;
 
     /**
+     * Defines the operations range for multi-call requests.
+     *
+     * Used with the Range header to resume multi-call batches
+     * when a previous request returned a partial (206) response.
+     *
+     * @var string|null
+     */
+    protected ?string $rangeHeader = null;
+
+    /**
      * Api Request instance.
      *
      * @var \pdeans\Miva\Api\Request|null
@@ -76,6 +104,16 @@ class Client
      * @var \pdeans\Miva\Api\Builders\RequestBuilder
      */
     protected RequestBuilder $requestBuilder;
+
+    /**
+     * Request timeout override in seconds.
+     *
+     * When set, this value is sent using the X-Miva-API-Timeout header
+     * to control the maximum execution time for a single API request.
+     *
+     * @var int|null
+     */
+    protected ?int $timeout = null;
 
     /**
      * Miva JSON API endpoint value.
@@ -92,12 +130,6 @@ class Client
     public function __construct(array $options)
     {
         $this->setOptions($options);
-
-        $this->auth = new Auth(
-            (string) $this->options['access_token'],
-            (string) $this->options['private_key'],
-            isset($this->options['hmac']) ? (string) $this->options['hmac'] : 'sha256'
-        );
 
         $this->createRequestBuilder();
         $this->setUrl($this->options['url']);
@@ -281,6 +313,10 @@ class Client
     {
         $request = $this->getRequest();
 
+        $request->setTimeoutHeader($this->timeout);
+        $request->setBinaryEncoding($this->binaryEncoding);
+        $request->setRangeHeader($this->rangeHeader);
+
         $response = $request->sendRequest($this->getUrl(), $this->auth, $this->getHeaders());
 
         // Save the function list names before clearing the request builder
@@ -291,7 +327,9 @@ class Client
 
         $responseBody = (string) $response->getBody();
 
-        return $rawResponse ? $responseBody : new Response($functionList, $responseBody);
+        return $rawResponse
+            ? $responseBody
+            : new Response($functionList, $responseBody, $response->getStatusCode(), $response->getHeaders());
     }
 
     /**
@@ -301,7 +339,11 @@ class Client
      */
     public function setOptions(array $options): static
     {
-        $this->options = $this->validateOptions($options);
+        $capabilities = $this->authCapabilities($options);
+        $this->validateOptions($options, $capabilities);
+        $this->options = $options;
+
+        $this->configureOptions($options, $capabilities);
 
         return $this;
     }
@@ -320,33 +362,173 @@ class Client
      * Validate the client configuration options.
      *
      * @param array<string, mixed> $options
-     * @return array<string, mixed>
-     *
      * @throws \pdeans\Miva\Api\Exceptions\MissingRequiredValueException
      */
-    protected function validateOptions(array $options): array
+    protected function validateOptions(array $options, ?array $capabilities = null): void
     {
-        if (! isset($options['private_key'])) {
+        $capabilities ??= $this->authCapabilities($options);
+
+        [$hasTokenAuth, $hasSshAuth] = $capabilities;
+
+        if (! $hasTokenAuth && ! $hasSshAuth) {
             throw new MissingRequiredValueException(
-                'Missing required option "private_key". Hint: Set the option value
-                to an empty string if accepting requests without a signature.'
+                'Missing required authentication options. ' .
+                'Provide access_token/private_key or ssh_auth username/private_key.'
             );
         }
 
-        $requiredValueOptions = [
-            'access_token',
-            'private_key',
-            'store_code',
-            'url',
-        ];
-
-        foreach ($requiredValueOptions as $option) {
+        foreach (['store_code', 'url'] as $option) {
             if (empty($options[$option])) {
-                throw new MissingRequiredValueException('Missing required option "' . $option . '".');
+                throw new MissingRequiredValueException(
+                    sprintf('Missing required option "%s".', $option)
+                );
             }
         }
+    }
 
-        return $options;
+    /**
+     * Set a per-request timeout value (seconds).
+     */
+    public function setTimeout(int $seconds): static
+    {
+        if ($seconds <= 0) {
+            throw new InvalidValueException('Timeout value must be greater than zero.');
+        }
+
+        $this->timeout = $seconds;
+
+        $this->options['timeout'] = $seconds;
+
+        return $this;
+    }
+
+    /**
+     * Set the binary encoding mode.
+     */
+    public function setBinaryEncoding(string $encoding): static
+    {
+        $encoding = strtolower(trim($encoding));
+
+        if (! in_array($encoding, self::BINARY_ENCODINGS, true)) {
+            throw new InvalidValueException(
+                'Binary encoding must be one of: "' . implode('", "', self::BINARY_ENCODINGS) . '".'
+            );
+        }
+
+        $this->binaryEncoding = $encoding === 'json' ? null : $encoding;
+
+        if ($encoding !== 'json') {
+            $this->options['binary_encoding'] = $encoding;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set the operations range header for multi-call retries.
+     */
+    public function setOperationsRange(int $start, ?int $end = null): static
+    {
+        if ($start < 1) {
+            throw new InvalidValueException('Range start must be at least 1.');
+        }
+
+        if ($end !== null && $end < $start) {
+            throw new InvalidValueException('Range end must be greater than or equal to the start value.');
+        }
+
+        $this->rangeHeader = $end === null
+            ? 'Operations=' . $start . '-'
+            : 'Operations=' . $start . '-' . $end;
+
+        $this->options['range'] = $this->rangeHeader;
+
+        return $this;
+    }
+
+    /**
+     * Clear any previously set operations range header.
+     */
+    public function clearOperationsRange(): static
+    {
+        $this->rangeHeader = null;
+
+        unset($this->options['range']);
+
+        return $this;
+    }
+
+    /**
+     * Configure SSH authentication for the request.
+     */
+    public function setSshAuth(string $username, string $privateKey, string $algorithm = 'sha256'): static
+    {
+        $this->auth = new SshAuth($username, $privateKey, $algorithm);
+
+        $this->options['ssh_auth'] = [
+            'username' => $username,
+            'private_key' => $privateKey,
+            'algorithm' => $algorithm,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Configure options from provided configuration.
+     *
+     * @param array<string, mixed> $options
+     */
+    protected function configureOptions(array $options, ?array $capabilities = null): void
+    {
+        $capabilities ??= $this->authCapabilities($options);
+
+        [$hasTokenAuth, $hasSshAuth] = $capabilities;
+
+        if ($hasSshAuth) {
+            $ssh = $options['ssh_auth'];
+
+            $this->setSshAuth(
+                (string) $ssh['username'],
+                (string) $ssh['private_key'],
+                isset($ssh['algorithm']) ? (string) $ssh['algorithm'] : 'sha256'
+            );
+        } elseif ($hasTokenAuth) {
+            $this->auth = new Auth(
+                (string) $options['access_token'],
+                (string) $options['private_key'],
+                isset($options['hmac']) ? (string) $options['hmac'] : 'sha256'
+            );
+        }
+
+        if (isset($options['timeout'])) {
+            $this->setTimeout((int) $options['timeout']);
+        }
+
+        if (isset($options['binary_encoding'])) {
+            $this->setBinaryEncoding((string) $options['binary_encoding']);
+        }
+
+        if (isset($options['range']) && is_string($options['range']) && $options['range'] !== '') {
+            $this->rangeHeader = $options['range'];
+        }
+    }
+
+    /**
+     * Determine available authentication options.
+     *
+     * @param array<string, mixed> $options
+     * @return array{bool, bool}
+     */
+    protected function authCapabilities(array $options): array
+    {
+        $hasAccessToken = isset($options['access_token']) && (string) $options['access_token'] !== '';
+        $hasPrivateKey = array_key_exists('private_key', $options);
+        $hasTokenAuth = $hasAccessToken && $hasPrivateKey;
+
+        $hasSshAuth = isset($options['ssh_auth']['username'], $options['ssh_auth']['private_key']);
+
+        return [$hasTokenAuth, $hasSshAuth];
     }
 
     /**

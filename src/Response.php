@@ -45,6 +45,13 @@ class Response
     protected array $data = [];
 
     /**
+     * HTTP response headers.
+     *
+     * @var array<string, array<int, string>>
+     */
+    protected array $headers = [];
+
+    /**
      * Error bag for the full response.
      *
      * @var \pdeans\Miva\Api\Response\ErrorBag
@@ -66,6 +73,20 @@ class Response
     protected array $functions = [];
 
     /**
+     * Parsed Content-Range data, if provided.
+     *
+     * @var array{completed_operations: int, total_operations: int|null}|null
+     */
+    protected ?array $contentRange = null;
+
+    /**
+     * HTTP status code.
+     *
+     * @var int
+     */
+    protected int $statusCode = 200;
+
+    /**
      * Track if any result reported failure.
      *
      * @var bool
@@ -83,21 +104,29 @@ class Response
      * Create a new API response instance.
      *
      * @param array<int|string, mixed> $requestFunctionsList
+     * @param array<string, array<int, string>> $headers
      *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
-    public function __construct(array $requestFunctionsList, string $responseBody)
-    {
+    public function __construct(
+        array $requestFunctionsList,
+        string $responseBody,
+        int $statusCode = 200,
+        array $headers = []
+    ) {
         if (empty($requestFunctionsList)) {
             throw new InvalidValueException('Empty request function list provided.');
         }
 
+        $this->statusCode = $statusCode;
         $this->body = $responseBody;
+        $this->headers = $this->normalizeHeaders($headers);
         $this->functionMeta = $this->normalizeFunctionMeta($requestFunctionsList);
         $this->functions = array_values(
             array_unique(array_column($this->functionMeta, 'name'))
         );
         $this->errors = new ErrorBag();
+        $this->contentRange = $this->parseContentRangeHeader();
 
         $this->parseResponseBody($responseBody);
         $this->success = ! $this->errors->has();
@@ -185,6 +214,54 @@ class Response
         }
 
         return $this->data;
+    }
+
+    /**
+     * Get the HTTP status code.
+     */
+    public function getStatusCode(): int
+    {
+        return $this->statusCode;
+    }
+
+    /**
+     * Determine if the response was a partial (HTTP 206) response.
+     */
+    public function isPartial(): bool
+    {
+        return $this->statusCode === 206;
+    }
+
+    /**
+     * Get the parsed Content-Range header data, if present.
+     *
+     * @return array{completed_operations: int, total_operations: int|null}|null
+     */
+    public function getContentRange(): ?array
+    {
+        return $this->contentRange;
+    }
+
+    /**
+     * Get all HTTP headers keyed by header name.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function getHeaders(): array
+    {
+        return $this->headers;
+    }
+
+    /**
+     * Get a specific HTTP header value.
+     *
+     * @return array<int, string>
+     */
+    public function getHeader(string $name): array
+    {
+        $name = strtolower($name);
+
+        return $this->headers[$name] ?? [];
     }
 
     /**
@@ -384,5 +461,56 @@ class Response
         }
 
         return $meta;
+    }
+
+    /**
+     * Normalize response headers to lower-case keys.
+     *
+     * @param array<string, array<int, string>> $headers
+     * @return array<string, array<int, string>>
+     */
+    protected function normalizeHeaders(array $headers): array
+    {
+        $normalized = [];
+
+        foreach ($headers as $name => $values) {
+            $normalized[strtolower($name)] = $values;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Parse the Content-Range header into a structured array.
+     *
+     * @return array{completed_operations: int, total_operations: int|null}|null
+     */
+    protected function parseContentRangeHeader(): ?array
+    {
+        $header = $this->getHeader('Content-Range');
+
+        if (empty($header)) {
+            return null;
+        }
+
+        $range = trim((string) $header[0]);
+
+        if ($range === '') {
+            return null;
+        }
+
+        [$completed, $total] = array_pad(explode('/', $range, 2), 2, null);
+
+        $completedOperations = is_numeric($completed) ? (int) $completed : null;
+        $totalOperations = is_numeric($total) ? (int) $total : null;
+
+        if ($completedOperations === null) {
+            return null;
+        }
+
+        return [
+            'completed_operations' => $completedOperations,
+            'total_operations' => $totalOperations,
+        ];
     }
 }
