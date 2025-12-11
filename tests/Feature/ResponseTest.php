@@ -81,7 +81,8 @@ it('captures iteration level validation errors', function (): void {
         responseFixture('product_update_iterations_error_validation')
     );
 
-    expect($response->failed())->toBeTrue();
+    expect($response->failed())->toBeFalse();
+    expect($response->hasErrors())->toBeTrue();
     expect($response->errors()->all())->toHaveCount(1);
     expect($response->errors()->forField('Product_Price'))->toHaveCount(1);
     expect($response->errors()->messages())->toContain('One or more parameters are invalid');
@@ -97,7 +98,8 @@ it('parses mixed operations with iterations and errors', function (): void {
         responseFixture('operations_mixed_errors')
     );
 
-    expect($response->failed())->toBeTrue();
+    expect($response->failed())->toBeFalse();
+    expect($response->hasErrors())->toBeTrue();
     expect($response->errors()->all())->toHaveCount(2);
     expect($response->errors()->forField('Product_Code'))->toHaveCount(1);
     expect($response->errors()->forField('Product_Price'))->toHaveCount(1);

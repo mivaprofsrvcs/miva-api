@@ -94,6 +94,13 @@ class Response
     protected bool $hasFailure = false;
 
     /**
+     * Track if any result reported success.
+     *
+     * @var bool
+     */
+    protected bool $hasSuccess = false;
+
+    /**
      * Overall success flag.
      *
      * @var bool
@@ -129,7 +136,7 @@ class Response
         $this->contentRange = $this->parseContentRangeHeader();
 
         $this->parseResponseBody($responseBody);
-        $this->success = ! $this->errors->has();
+        $this->success = $this->hasSuccess;
     }
 
     /**
@@ -271,7 +278,7 @@ class Response
      */
     public function isSuccess(): bool
     {
-        return $this->success;
+        return $this->successful();
     }
 
     /**
@@ -359,7 +366,7 @@ class Response
             }
         }
 
-        $this->success = ! $this->hasFailure && ! $this->errors->has();
+        $this->success = $this->hasSuccess;
     }
 
     /**
@@ -387,7 +394,9 @@ class Response
         $this->data[$functionName][$index] = $result;
         $this->errors = $this->errors->merge($errors);
 
-        if (! $success || $errors->has()) {
+        if ($success) {
+            $this->hasSuccess = true;
+        } else {
             $this->hasFailure = true;
         }
     }
