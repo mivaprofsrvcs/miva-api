@@ -27,6 +27,19 @@ use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * @method $this count(int $count)
+ * @method $this filter(string $filterName, mixed $filterValue)
+ * @method $this filters(array<string, mixed> $filters)
+ * @method $this odc(array<int, string> $columns)
+ * @method $this offset(int $offset)
+ * @method $this ondemandcolumns(array<int, string> $columns)
+ * @method $this params(array<string, mixed> $parameters)
+ * @method $this passphrase(string $passphrase)
+ * @method $this sort(string $sort)
+ *
+ * @mixin \pdeans\Miva\Api\Builders\FunctionBuilder
+ */
 class Client
 {
     /**
@@ -39,14 +52,14 @@ class Client
     /**
      * List of API HTTP request headers.
      *
-     * @var array
+     * @var array<string, string>
      */
     protected array $headers = [];
 
     /**
      * Api configuration options.
      *
-     * @var array
+     * @var array<string, mixed>
      */
     protected array $options;
 
@@ -60,9 +73,9 @@ class Client
     /**
      * Api RequestBuilder instance.
      *
-     * @var \pdeans\Miva\Api\Builders\RequestBuilder|null
+     * @var \pdeans\Miva\Api\Builders\RequestBuilder
      */
-    protected ?RequestBuilder $requestBuilder;
+    protected RequestBuilder $requestBuilder;
 
     /**
      * Miva JSON API endpoint value.
@@ -73,6 +86,8 @@ class Client
 
     /**
      * Create a new client instance.
+     *
+     * @param array<string, mixed> $options
      */
     public function __construct(array $options)
     {
@@ -118,6 +133,8 @@ class Client
 
     /**
      * Add list of HTTP request headers.
+     *
+     * @param array<string, string> $headers
      */
     public function addHeaders(array $headers): static
     {
@@ -133,7 +150,7 @@ class Client
      */
     protected function clearRequestBuilder(): static
     {
-        $this->requestBuilder = null;
+        $this->createRequestBuilder();
 
         return $this;
     }
@@ -163,6 +180,8 @@ class Client
 
     /**
      * Get the API request function list.
+     *
+     * @return array<string, array<FunctionBuilder>>
      */
     public function getFunctionList(): array
     {
@@ -171,6 +190,8 @@ class Client
 
     /**
      * Get the list of API request headers.
+     *
+     * @return array<string, string>
      */
     public function getHeaders(): array
     {
@@ -195,6 +216,8 @@ class Client
 
     /**
      * Get the API client options.
+     *
+     * @return array<string, mixed>
      */
     public function getOptions(): array
     {
@@ -219,7 +242,8 @@ class Client
     /**
      * Get API request body.
      *
-     * @link https://php.net/manual/en/json.constants.php Available options for the $encodeOpts parameter.
+     * Available options for the $encodeOpts parameter:
+     *   - @link https://php.net/manual/en/json.constants.php
      */
     public function getRequestBody(int $encodeOpts = JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT, int $depth = 512): string
     {
@@ -272,6 +296,8 @@ class Client
 
     /**
      * Set the API client options.
+     *
+     * @param array<string, mixed> $options
      */
     public function setOptions(array $options): static
     {
@@ -292,6 +318,9 @@ class Client
 
     /**
      * Validate the client configuration options.
+     *
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      *
      * @throws \pdeans\Miva\Api\Exceptions\MissingRequiredValueException
      */
@@ -322,6 +351,8 @@ class Client
 
     /**
      * Invoke \pdeans\Miva\Api\Builders\FunctionBuilder helper methods.
+     *
+     * @param array<int, mixed> $arguments
      */
     public function __call(string $method, array $arguments): static
     {

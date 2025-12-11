@@ -28,6 +28,9 @@ class FakeGuzzleClient implements ClientInterface
         $this->response = $response ?? new GuzzleResponse(200, [], '{"success":1,"data":{}}');
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function send(RequestInterface $request, array $options = []): ResponseInterface
     {
         $this->captured = $request;
@@ -35,6 +38,9 @@ class FakeGuzzleClient implements ClientInterface
         return $this->response;
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function sendAsync(RequestInterface $request, array $options = []): PromiseInterface
     {
         $this->captured = $request;
@@ -42,11 +48,17 @@ class FakeGuzzleClient implements ClientInterface
         return Create::promiseFor($this->response);
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function request(string $method, $uri, array $options = []): ResponseInterface
     {
         return $this->response;
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function requestAsync(string $method, $uri, array $options = []): PromiseInterface
     {
         return Create::promiseFor($this->response);

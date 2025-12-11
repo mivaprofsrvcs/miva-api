@@ -20,7 +20,6 @@ declare(strict_types=1);
 
 namespace pdeans\Miva\Api;
 
-use stdClass;
 use JsonException;
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 use pdeans\Miva\Api\Exceptions\JsonSerializeException;
@@ -40,12 +39,15 @@ class Response
      * Parsed response data grouped by function name
      * and iteration/operation index.
      *
-     * @var array<string, array<int, mixed>>
+     * @var array<string, array<int, array<string, mixed>|object>>
+     * @phpstan-var array<string, array<int, array<string, mixed>|object>>
      */
     protected array $data = [];
 
     /**
      * Error bag for the full response.
+     *
+     * @var \pdeans\Miva\Api\Response\ErrorBag
      */
     protected ErrorBag $errors;
 
@@ -65,16 +67,22 @@ class Response
 
     /**
      * Track if any result reported failure.
+     *
+     * @var bool
      */
     protected bool $hasFailure = false;
 
     /**
      * Overall success flag.
+     *
+     * @var bool
      */
     protected bool $success = false;
 
     /**
      * Create a new API response instance.
+     *
+     * @param array<int|string, mixed> $requestFunctionsList
      *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
@@ -105,6 +113,8 @@ class Response
 
     /**
      * Get the API response data property for specific function.
+     *
+     * @return array<int|string, mixed>|object
      *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
@@ -140,6 +150,8 @@ class Response
     /**
      * Get the full API response for specific function.
      *
+     * @return array<int, array<string, mixed>|object>
+     *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
     public function getFunction(string $functionName): array
@@ -153,6 +165,8 @@ class Response
 
     /**
      * Get the list of functions included in the API response.
+     *
+     * @return array<int, string>
      */
     public function getFunctions(): array
     {
@@ -161,6 +175,8 @@ class Response
 
     /**
      * Get the API response data.
+     *
+     * @return array<string, array<int, array<string, mixed>|object>>|array<int, array<string, mixed>|object>
      */
     public function getResponse(?string $functionName = null): array
     {
@@ -302,7 +318,7 @@ class Response
     /**
      * Build an error bag from a response object.
      */
-    protected function buildErrorBag(string $functionName, int $index, stdClass $result): ErrorBag
+    protected function buildErrorBag(string $functionName, int $index, object $result): ErrorBag
     {
         if (! isset($result->error_code) && ! isset($result->error_message)) {
             return new ErrorBag();
@@ -340,6 +356,9 @@ class Response
 
     /**
      * Normalize function metadata from the request function list.
+     *
+     * @param array<int|string, mixed> $functionList
+     * @return array<int, array{name: string, count: int}>
      */
     protected function normalizeFunctionMeta(array $functionList): array
     {

@@ -28,7 +28,7 @@ class SearchFilterBuilder extends FilterBuilder
     /**
      * List of valid NULL search operators.
      *
-     * @var array
+     * @var array<int, string>
      */
     protected const NULL_OPERATORS = [
         'TRUE',
@@ -39,7 +39,7 @@ class SearchFilterBuilder extends FilterBuilder
     /**
      * List of valid search operators.
      *
-     * @var array
+     * @var array<int, string>
      */
     protected const OPERATORS = [
         'EQ',
@@ -108,6 +108,8 @@ class SearchFilterBuilder extends FilterBuilder
 
     /**
      * Get the search null operators list.
+     *
+     * @return array<int, string>
      */
     public static function getNullOperators(): array
     {
@@ -117,13 +119,15 @@ class SearchFilterBuilder extends FilterBuilder
     /**
      * Get the search filter operator and value.
      *
+     * @return array{0: string, 1: mixed}
+     *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidArgumentException
      */
     public static function getOperatorAndValue(string $operator, mixed $value = null): array
     {
         $isNullOperator = in_array(strtoupper($operator), self::getNullOperators());
 
-        if ($value === null && !$isNullOperator) {
+        if ($value === null && ! $isNullOperator) {
             return ['EQ', $operator];
         }
 
@@ -140,6 +144,8 @@ class SearchFilterBuilder extends FilterBuilder
 
     /**
      * Get the search operators list.
+     *
+     * @return array<int, string>
      */
     public static function getOperators(): array
     {
@@ -168,6 +174,8 @@ class SearchFilterBuilder extends FilterBuilder
 
     /**
      * Define JSON serialization format.
+     *
+     * @return array<string, mixed>
      */
     public function jsonSerialize(): array
     {

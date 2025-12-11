@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use pdeans\Miva\Api\Response;
+use stdClass;
 
 it('parses a successful list load query response', function (): void {
     $response = new Response(
@@ -14,6 +15,7 @@ it('parses a successful list load query response', function (): void {
     expect($response->hasErrors())->toBeFalse();
     expect($response->getFunctions())->toContain('ProductList_Load_Query');
 
+    /** @var stdClass $data */
     $data = $response->getData('ProductList_Load_Query');
 
     expect($data->total_count)->toBe(117);
@@ -29,6 +31,7 @@ it('parses a successful list load response', function (): void {
 
     expect($response->successful())->toBeTrue();
     expect($response->hasErrors())->toBeFalse();
+    /** @var array<int, stdClass> $data */
     $data = $response->getData('OrderCustomFieldList_Load');
 
     expect($data)->toBeArray();
@@ -44,7 +47,9 @@ it('parses iteration responses for a single function', function (): void {
 
     expect($response->successful())->toBeTrue();
     expect($response->getFunction('Product_Insert'))->toHaveCount(2);
-    expect($response->getData('Product_Insert', 1)->code)->toBe('new-product-2');
+    /** @var stdClass $insertData */
+    $insertData = $response->getData('Product_Insert', 1);
+    expect($insertData->code)->toBe('new-product-2');
 });
 
 it('parses single insert response', function (): void {
@@ -54,7 +59,9 @@ it('parses single insert response', function (): void {
     );
 
     expect($response->successful())->toBeTrue();
-    expect($response->getData('Product_Insert')->code)->toBe('new-product');
+    /** @var stdClass $insert */
+    $insert = $response->getData('Product_Insert');
+    expect($insert->code)->toBe('new-product');
 });
 
 it('captures a single function error response', function (): void {

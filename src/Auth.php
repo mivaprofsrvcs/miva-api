@@ -32,7 +32,7 @@ final class Auth
     /**
      * List of valid HMAC types.
      *
-     * @var array
+     * @var string[]
      */
     private const HMAC_LIST = [
         'sha1',
@@ -115,6 +115,8 @@ final class Auth
 
     /**
      * Get the API authorization header.
+     *
+     * @return array<string, string>
      */
     public function getAuthHeader(string $data): array
     {
@@ -126,7 +128,7 @@ final class Auth
      */
     protected function setHmacType(string $hmacType): static
     {
-        if ($hmacType === '' || (is_string($this->privateKey) && $this->privateKey === '')) {
+        if ($hmacType === '' || $this->privateKey === '') {
             $this->hmacType = '';
         } else {
             $hmacTypeFormatted = strtolower($hmacType);

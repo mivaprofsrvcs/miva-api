@@ -49,7 +49,7 @@ class Request
     /**
      * API request headers.
      *
-     * @var array
+     * @var array<string, string>
      */
     protected array $headers;
 
@@ -83,6 +83,8 @@ class Request
 
     /**
      * Create a new API request instance.
+     *
+     * @param ClientInterface|array<string, mixed>|null $client
      */
     public function __construct(RequestBuilder $requestBuilder, ClientInterface|array|null $client = null)
     {
@@ -94,6 +96,8 @@ class Request
 
     /**
      * Get default request headers.
+     *
+     * @return array<string, string>
      */
     protected function defaultHeaders(): array
     {
@@ -113,11 +117,21 @@ class Request
      */
     public function getBody(int $encodeOpts = JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT, int $depth = 512): string
     {
+        if ($depth < 1) {
+            throw new JsonSerializeException('JSON encode depth must be at least 1.');
+        }
+
         try {
-            $this->body = json_encode($this->requestBuilder, $encodeOpts, $depth);
+            $encoded = json_encode($this->requestBuilder, $encodeOpts, $depth);
         } catch (JsonException $exception) {
             throw new JsonSerializeException($exception->getMessage());
         }
+
+        if ($encoded === false) {
+            throw new JsonSerializeException('Failed to encode request body.');
+        }
+
+        $this->body = $encoded;
 
         return $this->body;
     }
@@ -177,6 +191,8 @@ class Request
 
     /**
      * Send an API request.
+     *
+     * @param array<string, string> $httpHeaders
      */
     public function sendRequest(string $url, Auth $auth, array $httpHeaders = []): ResponseInterface
     {
@@ -211,6 +227,8 @@ class Request
 
     /**
      * Resolve HTTP client instance from provided configuration.
+     *
+     * @param ClientInterface|array<string, mixed>|null $client
      */
     protected function resolveClient(ClientInterface|array|null $client): ClientInterface
     {

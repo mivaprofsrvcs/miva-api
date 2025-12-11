@@ -57,7 +57,7 @@ class FunctionBuilder implements BuilderInterface
     /**
      * Function parameter list.
      *
-     * @var array
+     * @var array<string, mixed>
      */
     public array $parameterList = [];
 
@@ -117,6 +117,8 @@ class FunctionBuilder implements BuilderInterface
 
     /**
      * Add a list of filters to the filter list.
+     *
+     * @param array<string, mixed> $filters
      */
     public function filters(array $filters): static
     {
@@ -140,6 +142,8 @@ class FunctionBuilder implements BuilderInterface
      *
      * This list maps corresponding helper methods within the class, with the
      * method name matching the parameter list value.
+     *
+     * @return array<int, string>
      */
     public function getCommonParameterList(): array
     {
@@ -153,14 +157,18 @@ class FunctionBuilder implements BuilderInterface
 
     /**
      * Get the full parameter list.
+     *
+     * @return array<int, string>
      */
     public function getParameterList(): array
     {
-        return array_merge($this->getCommonParameterList(), $this->parameterList);
+        return array_merge($this->getCommonParameterList(), array_keys($this->parameterList));
     }
 
     /**
      * Get the request parameters.
+     *
+     * @return array<string, mixed>
      */
     public function getRequestParameters(): array
     {
@@ -187,6 +195,8 @@ class FunctionBuilder implements BuilderInterface
 
     /**
      * Define the JSON serialization format.
+     *
+     * @return array<string, mixed>
      */
     public function jsonSerialize(): array
     {
@@ -205,6 +215,8 @@ class FunctionBuilder implements BuilderInterface
 
     /**
      * Shorthand method to set the ondemandcolumns filter list.
+     *
+     * @param array<int, string> $columns
      */
     public function odc(array $columns): static
     {
@@ -215,6 +227,8 @@ class FunctionBuilder implements BuilderInterface
 
     /**
      * Set the ondemandcolumns filter list
+     *
+     * @param array<int, string> $columns
      */
     public function ondemandcolumns(array $columns): static
     {
@@ -225,6 +239,8 @@ class FunctionBuilder implements BuilderInterface
 
     /**
      * Set additional function input parameters.
+     *
+     * @param array<string, mixed> $parameters
      */
     public function params(array $parameters): static
     {

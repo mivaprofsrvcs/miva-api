@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use pdeans\Miva\Api\Client;
+use pdeans\Miva\Api\Response as ApiResponse;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -15,6 +16,9 @@ it('returns a successful response for a product list query', function (): void {
         ->add();
 
     $response = $client->send();
+
+    expect($response)->toBeInstanceOf(ApiResponse::class);
+    assert($response instanceof ApiResponse);
 
     expect($response->isSuccess())->toBeTrue();
     expect($response->getFunctions())->toContain($functionName);

@@ -27,20 +27,13 @@ class ShowFilterBuilder extends FilterBuilder
     /**
      * List of valid API function names.
      *
-     * @var array
+     * @var array<int, string>
      */
     protected const FUNCTION_NAMES = [
         'categorylist_load_query',
         'categoryproductlist_load_query',
         'productlist_load_query',
     ];
-
-    /**
-     * API function name.
-     *
-     * @var string|null
-     */
-    protected ?string $functionName;
 
     /**
      * Show filter value.
@@ -58,13 +51,13 @@ class ShowFilterBuilder extends FilterBuilder
     {
         $this->functionName = strtolower($functionName);
 
-        if (!$this->isValidFunctionName($this->functionName)) {
+        if (! $this->isValidFunctionName($this->functionName)) {
             throw new InvalidValueException('Show filter is not supported for function "' . $functionName . '".');
         }
 
         $this->showValue = ucfirst($showValue);
 
-        if (!$this->isValidShowValue($this->showValue)) {
+        if (! $this->isValidShowValue($this->showValue)) {
             throw new InvalidValueException('Invalid value "' . $showValue . '" provided to show filter.');
         }
     }
@@ -76,7 +69,13 @@ class ShowFilterBuilder extends FilterBuilder
      */
     public function getFilterName(): string
     {
-        switch (strtolower($this->functionName)) {
+        if ($this->functionName === null) {
+            throw new InvalidValueException('Function name is required for show filters.');
+        }
+
+        $functionName = (string) $this->functionName;
+
+        switch (strtolower($functionName)) {
             case 'categorylist_load_query':
                 return 'Category_Show';
             case 'categoryproductlist_load_query':
@@ -84,7 +83,7 @@ class ShowFilterBuilder extends FilterBuilder
                 return 'Product_Show';
         }
 
-        throw new InvalidValueException('Show filter not found for function "' . $this->functionName . '".');
+        throw new InvalidValueException('Show filter not found for function "' . $functionName . '".');
     }
 
     /**
@@ -102,7 +101,13 @@ class ShowFilterBuilder extends FilterBuilder
     {
         $showValues = [];
 
-        switch (strtolower($this->functionName)) {
+        if ($this->functionName === null) {
+            return false;
+        }
+
+        $functionName = (string) $this->functionName;
+
+        switch (strtolower($functionName)) {
             case 'categorylist_load_query':
                 $showValues = ['active', 'all'];
                 break;

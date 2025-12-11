@@ -82,6 +82,8 @@ class Error
 
     /**
      * Get the list of field-level errors.
+     *
+     * @return array<int, array{error_field?: string|null, error_message?: string|null}>
      */
     public function errorFields(): array
     {

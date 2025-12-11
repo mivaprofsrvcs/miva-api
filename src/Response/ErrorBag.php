@@ -7,19 +7,22 @@ namespace pdeans\Miva\Api\Response;
 use ArrayIterator;
 use IteratorAggregate;
 
+/**
+ * @implements IteratorAggregate<int, Error>
+ */
 class ErrorBag implements IteratorAggregate
 {
     /**
      * Collected response errors.
      *
-     * @var array<\pdeans\Miva\Api\Response\Error>
+     * @var array<Error>
      */
     protected array $errors;
 
     /**
      * Create a new response error bag instance.
      *
-     * @param array<\pdeans\Miva\Api\Response\Error> $errors
+     * @param array<Error> $errors
      */
     public function __construct(array $errors = [])
     {
@@ -37,7 +40,7 @@ class ErrorBag implements IteratorAggregate
     /**
      * Get all errors.
      *
-     * @return array<\pdeans\Miva\Api\Response\Error>
+     * @return array<Error>
      */
     public function all(): array
     {
@@ -46,6 +49,8 @@ class ErrorBag implements IteratorAggregate
 
     /**
      * Get all error messages.
+     *
+     * @return array<int, string>
      */
     public function messages(): array
     {
@@ -58,7 +63,7 @@ class ErrorBag implements IteratorAggregate
     /**
      * Get errors for a specific field.
      *
-     * @return array<\pdeans\Miva\Api\Response\Error>
+     * @return array<Error>
      */
     public function forField(string $field): array
     {
@@ -88,17 +93,19 @@ class ErrorBag implements IteratorAggregate
     /**
      * Merge another error bag into a new instance.
      */
-    public function merge(self $bag): static
+    public function merge(self $bag): self
     {
         if (! $bag->has()) {
             return $this;
         }
 
-        return new static(array_merge($this->errors, $bag->all()));
+        return new self(array_merge($this->errors, $bag->all()));
     }
 
     /**
      * Get an iterator for the error collection.
+     *
+     * @return ArrayIterator<int, Error>
      */
     public function getIterator(): ArrayIterator
     {

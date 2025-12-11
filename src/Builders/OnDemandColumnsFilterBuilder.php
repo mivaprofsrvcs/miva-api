@@ -25,20 +25,24 @@ class OnDemandColumnsFilterBuilder extends FilterBuilder
     /**
      * On-demand columns list
      *
-     * @var array
+     * @var array<int, string>
      */
     public array $columns;
 
     /**
      * Create a new on-demand columns filter builder instance.
+     *
+     * @param array<int, string> $columns
      */
     public function __construct(array $columns)
     {
-        $this->columns = $columns;
+        $this->columns = array_map('strval', $columns);
     }
 
     /**
      * Define JSON serialization format.
+     *
+     * @return array<int, string>
      */
     public function jsonSerialize(): array
     {

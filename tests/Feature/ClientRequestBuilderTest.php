@@ -95,7 +95,8 @@ it('merges custom headers and preserves defaults', function (): void {
     $client->func('ProductList_Load_Query')->count(1)->add();
     $client->send(true);
 
-    $headers = $guzzleMock->captured->getHeaders();
+    expect($guzzleMock->captured)->toBeInstanceOf(RequestInterface::class);
+    $headers = $guzzleMock->captured?->getHeaders() ?? [];
 
     expect($headers)->toHaveKey('Content-Type');
     expect($headers)->toHaveKey('Accept');

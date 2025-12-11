@@ -27,6 +27,8 @@ function env(string $key, mixed $default = null): mixed
 /**
  * Build a client configuration array from environment variables
  * or skip tests when missing.
+ *
+ * @return array<string, mixed>
  */
 function mivaClientConfig(): array
 {
@@ -42,7 +44,9 @@ function mivaClientConfig(): array
     );
 
     if (! empty($missing)) {
-        test()->skip('Missing environment variables: ' . implode(', ', $missing));
+        /** @var \Pest\PendingCalls\TestCall $pending */
+        $pending = test();
+        $pending->skip('Missing environment variables: ' . implode(', ', $missing));
 
         return [];
     }
