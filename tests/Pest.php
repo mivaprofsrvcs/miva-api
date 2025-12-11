@@ -46,7 +46,7 @@ function mivaClientConfig(): array
     if (! empty($missing)) {
         /** @var \Pest\PendingCalls\TestCall $pending */
         $pending = test();
-        $pending->skip('Missing environment variables: ' . implode(', ', $missing));
+        $pending->markTestSkipped('Missing environment variables: ' . implode(', ', $missing));
 
         return [];
     }
@@ -98,6 +98,79 @@ function mivaClientConfig(): array
 
     if (! empty($headers)) {
         $config['http_headers'] = $headers;
+    }
+
+    return $config;
+}
+
+/**
+ * Build an SSH authenticated client configuration array or skip when missing.
+ *
+ * @return array<string, mixed>
+ */
+function mivaSshClientConfig(): array
+{
+    $values = [
+        'url' => (string) env('MIVA_API_URL', ''),
+        'store_code' => (string) env('MIVA_API_STORE_CODE', ''),
+        'username' => (string) env('MIVA_API_SSH_USERNAME', ''),
+        'private_key' => '',
+    ];
+
+    $privateKeyPath = (string) env('MIVA_API_SSH_PRIVATE_KEY_PATH', '');
+
+    if ($privateKeyPath === '') {
+        test()->markTestSkipped('Missing SSH private key path: set MIVA_API_SSH_PRIVATE_KEY_PATH.');
+
+        return [];
+    }
+
+    if (! is_readable($privateKeyPath)) {
+        test()->markTestSkipped('SSH private key file is not readable: ' . $privateKeyPath);
+
+        return [];
+    }
+
+    $fileContents = file_get_contents($privateKeyPath);
+
+    if ($fileContents === false) {
+        test()->markTestSkipped('Unable to read SSH private key file: ' . $privateKeyPath);
+
+        return [];
+    }
+
+    $values['private_key'] = $fileContents;
+
+    $missing = array_keys(
+        array_filter($values, static fn ($value) => $value === '')
+    );
+
+    if (! empty($missing)) {
+        /** @var \Pest\PendingCalls\TestCall $pending */
+        $pending = test();
+        $pending->markTestSkipped('Missing environment variables: ' . implode(', ', $missing));
+
+        return [];
+    }
+
+    $config = [
+        'url' => $values['url'],
+        'store_code' => $values['store_code'],
+        'ssh_auth' => [
+            'username' => $values['username'],
+            'private_key' => $values['private_key'],
+            'algorithm' => (string) env('MIVA_API_SSH_ALGORITHM', 'sha256'),
+        ],
+        'http_client' => [
+            'verify' => false,
+        ],
+    ];
+
+    $verifySetting = env('MIVA_API_HTTP_VERIFY');
+    $verify = filter_var((string) $verifySetting, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+
+    if ($verify !== null) {
+        $config['http_client']['verify'] = $verify;
     }
 
     return $config;

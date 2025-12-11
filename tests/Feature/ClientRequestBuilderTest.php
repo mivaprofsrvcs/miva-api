@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use pdeans\Miva\Api\Client;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
+use pdeans\Miva\Api\Auth;
 use pdeans\Miva\Api\SshAuth;
 use Tests\Support\FakeGuzzleClient;
 use Psr\Http\Message\RequestInterface;
@@ -104,7 +105,7 @@ it('merges custom headers and preserves defaults', function (): void {
     expect($headers)->toHaveKey('Accept');
     expect($headers)->toHaveKey('User-Agent');
     expect($headers['X-Custom'][0])->toBe('abc');
-    expect($headers)->toHaveKey('X-Miva-API-Authorization');
+    expect($headers)->toHaveKey(Auth::AUTH_HEADER_NAME);
 });
 
 it('captures previous request and response after send', function (): void {
@@ -202,4 +203,39 @@ it('parses partial responses with content range headers', function (): void {
         'completed_operations' => 3,
         'total_operations' => 5,
     ]);
+});
+
+it('proxies function builder fluent methods through the client', function (): void {
+    $client = new Client([
+        'url' => 'https://example.test/mm5/json.mvc',
+        'store_code' => 'PS',
+        'access_token' => 'token',
+        'private_key' => 'key',
+        'timestamp' => false,
+    ]);
+
+    $client->func('ProductList_Load_Query')
+        ->count(10)
+        ->offset(5)
+        ->sort('name')
+        ->filter('search', ['field' => 'code', 'operator' => 'EQ', 'value' => 'SKU'])
+        ->filters(['passphrase' => 'secret'])
+        ->odc(['Code', 'Name'])
+        ->params(['Custom' => 'Value'])
+        ->passphrase('abc123')
+        ->add();
+
+    $payload = json_decode($client->getRequestBody(JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+
+    expect($payload['Function'])->toBe('ProductList_Load_Query');
+    expect($payload['Count'])->toBe(10);
+    expect($payload['Offset'])->toBe(5);
+    expect($payload['Sort'])->toBe('name');
+    expect($payload['Filter'][0]['name'])->toBe('search');
+    expect($payload['Filter'][1]['name'])->toBe('passphrase');
+    expect($payload['Filter'][1]['value'])->toBe('secret');
+    expect($payload['Filter'][2]['name'])->toBe('ondemandcolumns');
+    expect($payload['Filter'][2]['value'])->toBe(['Code', 'Name']);
+    expect($payload['Custom'])->toBe('Value');
+    expect($payload['Passphrase'])->toBe('abc123');
 });
