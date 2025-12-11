@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 use pdeans\Miva\Api\Client;
 
+// Only register this live test when explicitly enabled.
+if (! filter_var((string) env('MIVA_API_SSH_LIVE', ''), FILTER_VALIDATE_BOOL)) {
+    return;
+}
+
 it('performs a product list query using ssh authentication when configured', function (): void {
-    if (! filter_var((string) env('MIVA_API_SSH_LIVE', ''), FILTER_VALIDATE_BOOL)) {
-        test()->markTestSkipped('SSH live test disabled. Set MIVA_API_SSH_LIVE=true to run.');
-
-        return;
-    }
-
     $config = mivaSshClientConfig();
 
     if ($config === []) {

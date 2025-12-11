@@ -141,6 +141,29 @@ function mivaSshClientConfig(): array
 
     $values['private_key'] = $fileContents;
 
+    $headers = array_filter([
+        'Authorization' => env('MIVA_API_HTTP_AUTH'),
+        'Cache-Control' => env('MIVA_API_HTTP_CACHE'),
+    ]);
+
+    $extraHeaders = env('MIVA_API_HTTP_HEADERS');
+
+    if (! empty($extraHeaders)) {
+        $decodedHeaders = json_decode((string) $extraHeaders, true);
+
+        if (is_array($decodedHeaders)) {
+            foreach ($decodedHeaders as $name => $value) {
+                if (! is_string($name) || $name === '') {
+                    continue;
+                }
+
+                $headers[$name] = is_array($value)
+                    ? json_encode($value)
+                    : (string) $value;
+            }
+        }
+    }
+
     $missing = array_keys(
         array_filter($values, static fn ($value) => $value === '')
     );
@@ -153,6 +176,17 @@ function mivaSshClientConfig(): array
         return [];
     }
 
+    $httpClient = [
+        'verify' => false,
+    ];
+
+    $verifySetting = env('MIVA_API_HTTP_VERIFY');
+    $verify = filter_var((string) $verifySetting, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+
+    if ($verify !== null) {
+        $httpClient['verify'] = $verify;
+    }
+
     $config = [
         'url' => $values['url'],
         'store_code' => $values['store_code'],
@@ -161,16 +195,11 @@ function mivaSshClientConfig(): array
             'private_key' => $values['private_key'],
             'algorithm' => (string) env('MIVA_API_SSH_ALGORITHM', 'sha256'),
         ],
-        'http_client' => [
-            'verify' => false,
-        ],
+        'http_client' => $httpClient,
     ];
 
-    $verifySetting = env('MIVA_API_HTTP_VERIFY');
-    $verify = filter_var((string) $verifySetting, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
-
-    if ($verify !== null) {
-        $config['http_client']['verify'] = $verify;
+    if (! empty($headers)) {
+        $config['http_headers'] = $headers;
     }
 
     return $config;
