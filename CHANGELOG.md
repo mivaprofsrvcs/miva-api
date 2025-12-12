@@ -1,4 +1,4 @@
-# Changelog
+# Release Notes
 
 ## [Unreleased](https://github.com/mivaprofsrvcs/miva-api/compare/v3.0.0...HEAD)
 
