@@ -216,7 +216,7 @@ class Request
     {
         $this->response = null;
 
-        $body = $this->getBody();
+        $body = $this->getBody(JSON_THROW_ON_ERROR);
 
         $headers = $this->buildHeaders($httpHeaders, $auth, $body);
 
