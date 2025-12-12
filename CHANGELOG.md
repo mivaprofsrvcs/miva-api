@@ -1,6 +1,6 @@
 # Changelog
 
-[Unreleased](https://github.com/mivaprofsrvcs/miva-api/compare/v3.0.0...HEAD)
+## [Unreleased](https://github.com/mivaprofsrvcs/miva-api/compare/v3.0.0...HEAD)
 
 ## [v3.0.0](https://github.com/mivaprofsrvcs/miva-api/compare/v2.1.1...v3.0.0) - 2025-12-12
 - Migrated HTTP layer to Guzzle 7.10.0 and removed the `pdeans/http` dependency.
