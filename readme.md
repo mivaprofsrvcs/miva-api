@@ -5,11 +5,18 @@
   Author: pdeans
 -->
 
-## Miva JSON API PHP Library
+# Miva JSON API PHP Library
+
+<p align="center">
+<a href="https://packagist.org/packages/pdeans/miva-api"><img src="https://img.shields.io/packagist/v/pdeans/miva-api" alt="Latest Stable Version"></a>
+<a href="https://github.com/mivaprofsrvcs/miva-api/actions/workflows/tests.yml"><img src="https://github.com/mivaprofsrvcs/miva-api/actions/workflows/tests.yml/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/pdeans/miva-api"><img src="https://img.shields.io/packagist/dt/pdeans/miva-api" alt="Total Downloads"></a>
+<a href="LICENSE.md"><img src="https://img.shields.io/packagist/l/pdeans/miva-api" alt="License"></a>
+</p>
 
 PHP library for interacting with the Miva JSON API.
 
-### Table Of Contents
+## Table Of Contents
 
 - [Installation](#installation)
 - [Configuring the API Client](#configuring-the-api-client)
