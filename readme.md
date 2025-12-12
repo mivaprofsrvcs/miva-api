@@ -74,7 +74,7 @@ timestamp | No | boolean | Enable/disable API request timestamp validation. Defa
 timeout | No | int | Override default 60s Miva request timeout. Sends `X-Miva-API-Timeout` header.
 binary_encoding | No | string | `json` (default) or `base64`. Sends `X-Miva-API-Binary-Encoding` header when not `json`.
 range | No | string | Range header value for multi-call retries (e.g., `Operations=4-5`).
-ssh_auth | No | array | SSH authentication (takes precedence over token authentication when present): `['username' => string, 'private_key' => string, 'algorithm' => 'sha256'|'sha512']`. `private_key` may be a file path (preferred) or raw PEM contents. Supported private key formats: **PKCS#1 PEM** or **PKCS#8 PEM** (convert OpenSSH keys before use).
+ssh_auth | No | array | SSH authentication (takes precedence over token authentication when present): `['username' => string, 'private_key' => string, 'algorithm' => 'sha256'\|'sha512']`. `private_key` may be a file path (preferred) or raw PEM contents. Supported private key formats: **PKCS#1 PEM** or **PKCS#8 PEM** (convert OpenSSH keys before use).
 http_headers | No | array | HTTP request headers to merge. The library automatically sets the following default headers for every request: `Content-Type`, `Accept`, `User-Agent`, and the appropriate auth header. These headers should not be included in this list.
 http_client | No | array | Associative array of [Guzzle request options](https://docs.guzzlephp.org/en/stable/request-options.html), or an instance of `GuzzleHttp\ClientInterface`.
 
