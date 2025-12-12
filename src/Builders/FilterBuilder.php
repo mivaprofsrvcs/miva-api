@@ -16,6 +16,8 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api\Builders;
 
 use Countable;
@@ -23,11 +25,6 @@ use pdeans\Miva\Api\Contracts\BuilderInterface;
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 
-/**
- * FilterBuilder class
- *
- * Build a request Function filter.
- */
 class FilterBuilder implements BuilderInterface
 {
     /**
@@ -35,7 +32,7 @@ class FilterBuilder implements BuilderInterface
      *
      * @var string|null
      */
-    protected string|null $functionName;
+    protected ?string $functionName;
 
     /**
      * Filter name.
@@ -54,16 +51,16 @@ class FilterBuilder implements BuilderInterface
     /**
      * Filter value list.
      *
-     * @var GenericFilterBuilder|OnDemandColumnsFilterBuilder|ShowFilterBuilder|array
+     * @var array<int, SearchFilterBuilder>|GenericFilterBuilder|OnDemandColumnsFilterBuilder|ShowFilterBuilder
      */
-    protected GenericFilterBuilder|OnDemandColumnsFilterBuilder|ShowFilterBuilder|array $valueList;
+    protected array|GenericFilterBuilder|OnDemandColumnsFilterBuilder|ShowFilterBuilder $valueList = [];
 
     /**
      * Create a new filter builder instance.
      *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
-    public function __construct(string $name, mixed $value, string|null $functionName = null)
+    public function __construct(string $name, mixed $value, ?string $functionName = null)
     {
         $this->name = trim($name);
 
@@ -77,7 +74,6 @@ class FilterBuilder implements BuilderInterface
             throw new InvalidValueException('Invalid value provided for "value".');
         }
 
-        $this->valueList    = [];
         $this->functionName = $functionName;
     }
 
@@ -89,28 +85,40 @@ class FilterBuilder implements BuilderInterface
         $name = strtolower($this->name);
 
         if ($name === 'search') {
+            $filters = [];
+
+            if (! is_array($this->value)) {
+                throw new MissingRequiredValueException('Search filter value must be an array.');
+            }
+
             if (isset($this->value[0])) {
                 foreach ($this->value as $searchFilter) {
                     $this->validateSearchFilter($searchFilter);
 
-                    $this->valueList[] = new SearchFilterBuilder(
+                    $filters[] = new SearchFilterBuilder(
                         $searchFilter['field'],
                         $searchFilter['operator'],
-                        isset($searchFilter['value']) ? $searchFilter['value'] : null
+                        $searchFilter['value'] ?? null
                     );
                 }
             } else {
                 $this->validateSearchFilter($this->value);
 
-                $this->valueList[] = new SearchFilterBuilder(
+                $filters[] = new SearchFilterBuilder(
                     $this->value['field'],
                     $this->value['operator'],
-                    isset($this->value['value']) ? $this->value['value'] : null
+                    $this->value['value'] ?? null
                 );
             }
+
+            $this->valueList = $filters;
         } elseif ($name === 'ondemandcolumns') {
             $this->valueList = new OnDemandColumnsFilterBuilder($this->value);
         } elseif ($name === 'show') {
+            if ($this->functionName === null) {
+                throw new MissingRequiredValueException('Function name is required for show filters.');
+            }
+
             $showFilter = new ShowFilterBuilder($this->functionName, $this->value);
 
             $this->name = $showFilter->getFilterName();
@@ -127,7 +135,7 @@ class FilterBuilder implements BuilderInterface
      */
     protected function isBlankValue(mixed $value): bool
     {
-        if (is_null($value)) {
+        if ($value === null) {
             return true;
         }
 
@@ -160,6 +168,8 @@ class FilterBuilder implements BuilderInterface
     /**
      * Validate a search filter.
      *
+     * @param array<string, mixed> $filter
+     *
      * @throws \pdeans\Miva\Api\Exceptions\MissingRequiredValueException
      */
     protected function validateSearchFilter(array $filter): void
@@ -174,7 +184,7 @@ class FilterBuilder implements BuilderInterface
 
         if (
             ! isset($filter['value'])
-            && !in_array(strtoupper($filter['operator']), SearchFilterBuilder::getNullOperators())
+            && ! in_array(strtoupper($filter['operator']), SearchFilterBuilder::getNullOperators())
         ) {
             throw new MissingRequiredValueException('Missing required filter property "value".');
         }

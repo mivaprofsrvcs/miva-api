@@ -4,6 +4,10 @@
     "description": "PHP library for interacting with the Miva JSON API.",
     "license": "MIT",
     "keywords": ["Miva", "Merchant", "json", "api"],
+    "support": {
+		"issues": "https://github.com/mivaprofsrvcs/miva-api/issues",
+		"source": "https://github.com/mivaprofsrvcs/miva-api"
+	},
     "authors": [
         {
             "name": "Patrick Stearns",
@@ -11,14 +15,41 @@
         }
     ],
     "require": {
-        "php": "^8.1",
+        "php": "^8.3",
         "ext-json": "*",
-        "pdeans/http": "^2.0.3"
+        "guzzlehttp/guzzle": "^7.10"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.26",
+        "phpstan/phpstan": "^2.1",
+        "pestphp/pest": "^4.1",
+        "symfony/var-dumper": "^7.4",
+        "vlucas/phpdotenv": "^5.6"
     },
     "autoload": {
         "psr-4": {
             "pdeans\\Miva\\Api\\": "src/"
         }
+    },
+    "autoload-dev": {
+		"psr-4": {
+			"Tests\\": "tests/"
+		}
+	},
+    "config": {
+		"sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "phpstan": "phpstan analyse --memory-limit=512M",
+        "pint": "pint --test",
+        "lint": [
+            "@phpstan",
+            "@pint"
+        ]
     },
     "minimum-stability": "stable",
     "prefer-stable": true

@@ -16,15 +16,13 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api\Builders;
 
-use pdeans\Miva\Api\Builders\FunctionBuilder;
 use pdeans\Miva\Api\Contracts\BuilderInterface;
 use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 
-/**
- * RequestBuilder class
- */
 class RequestBuilder implements BuilderInterface
 {
     /**
@@ -32,14 +30,14 @@ class RequestBuilder implements BuilderInterface
      *
      * @var \pdeans\Miva\Api\Builders\FunctionBuilder|null
      */
-    public FunctionBuilder|null $function;
+    public ?FunctionBuilder $function = null;
 
     /**
      * API request function list.
      *
-     * @var array
+     * @var array<string, array<FunctionBuilder>>
      */
-    protected array $functionList;
+    protected array $functionList = [];
 
     /**
      * Miva store code.
@@ -49,7 +47,8 @@ class RequestBuilder implements BuilderInterface
     public string $storeCode;
 
     /**
-     * Flag to determine if the Miva_Request_Timestamp parameter should be added to the request.
+     * Flag to determine if the Miva_Request_Timestamp
+     * parameter should be added to the request.
      *
      * @var bool
      */
@@ -65,11 +64,11 @@ class RequestBuilder implements BuilderInterface
         $this->storeCode = trim($storeCode);
 
         if ($this->storeCode === '') {
-            throw new MissingRequiredValueException('A valid store code value must be provided.');
+            throw new MissingRequiredValueException(
+                'A valid store code value must be provided.'
+            );
         }
 
-        $this->function = null;
-        $this->functionList = [];
         $this->addTimestamp = $addTimestamp;
     }
 
@@ -78,6 +77,10 @@ class RequestBuilder implements BuilderInterface
      */
     public function addFunction(): static
     {
+        if ($this->function === null) {
+            throw new MissingRequiredValueException('FunctionBuilder instance not initialized.');
+        }
+
         $this->functionList[$this->function->name][] = $this->function;
 
         return $this;
@@ -85,6 +88,8 @@ class RequestBuilder implements BuilderInterface
 
     /**
      * Get the API request function list.
+     *
+     * @return array<string, array<FunctionBuilder>>
      */
     public function getFunctionList(): array
     {
@@ -93,6 +98,8 @@ class RequestBuilder implements BuilderInterface
 
     /**
      * Define JSON serialization format.
+     *
+     * @return array<string, mixed>
      *
      * @throws \pdeans\Miva\Api\Exceptions\MissingRequiredValueException
      */
@@ -120,7 +127,7 @@ class RequestBuilder implements BuilderInterface
             } elseif ($functionCount > 1) {
                 $request['Iterations'] = $functions;
             }
-        } elseif (count($this->functionList) > 1) {
+        } else {
             $functionOperations = [];
 
             foreach ($this->functionList as $functionName => $functions) {

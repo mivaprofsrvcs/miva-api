@@ -16,16 +16,49 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api\Builders;
 
 use pdeans\Miva\Api\Exceptions\InvalidArgumentException;
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 
-/**
- * SearchFilterBuilder class
- */
 class SearchFilterBuilder extends FilterBuilder
 {
+    /**
+     * List of valid NULL search operators.
+     *
+     * @var array<int, string>
+     */
+    protected const NULL_OPERATORS = [
+        'TRUE',
+        'FALSE',
+        'NULL',
+    ];
+
+    /**
+     * List of valid search operators.
+     *
+     * @var array<int, string>
+     */
+    protected const OPERATORS = [
+        'EQ',
+        'GT',
+        'GE',
+        'LT',
+        'LE',
+        'CO',
+        'NC',
+        'LIKE',
+        'NOTLIKE',
+        'NE',
+        'TRUE',
+        'FALSE',
+        'NULL',
+        'IN',
+        'SUBWHERE',
+    ];
+
     /**
      * Filter search field.
      *
@@ -34,45 +67,11 @@ class SearchFilterBuilder extends FilterBuilder
     public string $field;
 
     /**
-     * List of valid NULL search operators.
-     *
-     * @var array
-     */
-    protected static array $NULL_OPERATORS = [
-        'TRUE',  // "field" is true
-        'FALSE', // "field" is false
-        'NULL',  // "field" is null
-    ];
-
-    /**
      * Filter search operator.
      *
      * @var string
      */
     public string $operator;
-
-    /**
-     * List of valid search operators.
-     *
-     * @var array
-     */
-    protected static array $OPERATORS = [
-        'EQ',       // "field" equals "value" (generally case insensitive)
-        'GT',       // "field" is greater than to "value"
-        'GE',       // "field" is greater than or equal to "value"
-        'LT',       // "field" is less than "value"
-        'LE',       // "field" is less than or equal to "value"
-        'CO',       // "field" contains "value"
-        'NC',       // "field" does not contain "value"
-        'LIKE',     // "field" matches "value" using SQL LIKE semantics
-        'NOTLIKE',  // "field" does not match "value" using SQL LIKE semantics
-        'NE',       // "field" is not equal to "value"
-        'TRUE',     // "field" is true
-        'FALSE',    // "field" is false
-        'NULL',     // "field" is null
-        'IN',       // "field" is equal to one of a set of comma-separated values taken from "value"
-        'SUBWHERE', // Used for parenthetical comparisons
-    ];
 
     /**
      * Filter search value.
@@ -96,11 +95,11 @@ class SearchFilterBuilder extends FilterBuilder
 
         $this->operator = strtoupper($operator);
 
-        if (!in_array($this->operator, self::$OPERATORS)) {
+        if (! in_array($this->operator, self::OPERATORS)) {
             throw new InvalidValueException('Invalid operator "' . $operator . '" provided.');
         }
 
-        if (is_null($value) && !in_array($this->operator, self::$NULL_OPERATORS)) {
+        if ($value === null && ! in_array($this->operator, self::NULL_OPERATORS)) {
             throw new InvalidValueException('Invalid value provided for "value".');
         }
 
@@ -109,14 +108,18 @@ class SearchFilterBuilder extends FilterBuilder
 
     /**
      * Get the search null operators list.
+     *
+     * @return array<int, string>
      */
     public static function getNullOperators(): array
     {
-        return self::$NULL_OPERATORS;
+        return self::NULL_OPERATORS;
     }
 
     /**
      * Get the search filter operator and value.
+     *
+     * @return array{0: string, 1: mixed}
      *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidArgumentException
      */
@@ -124,7 +127,7 @@ class SearchFilterBuilder extends FilterBuilder
     {
         $isNullOperator = in_array(strtoupper($operator), self::getNullOperators());
 
-        if (is_null($value) && !$isNullOperator) {
+        if ($value === null && ! $isNullOperator) {
             return ['EQ', $operator];
         }
 
@@ -141,10 +144,12 @@ class SearchFilterBuilder extends FilterBuilder
 
     /**
      * Get the search operators list.
+     *
+     * @return array<int, string>
      */
     public static function getOperators(): array
     {
-        return self::$OPERATORS;
+        return self::OPERATORS;
     }
 
     /**
@@ -162,13 +167,15 @@ class SearchFilterBuilder extends FilterBuilder
     {
         $operator = strtoupper($operator);
 
-        return is_null($value)
+        return $value === null
             && in_array($operator, self::getOperators())
             && ! in_array($operator, self::getNullOperators());
     }
 
     /**
      * Define JSON serialization format.
+     *
+     * @return array<string, mixed>
      */
     public function jsonSerialize(): array
     {
@@ -177,7 +184,7 @@ class SearchFilterBuilder extends FilterBuilder
             'operator' => $this->operator,
         ];
 
-        if (! is_null($this->value)) {
+        if ($this->value !== null) {
             $params['value'] = $this->value;
         }
 

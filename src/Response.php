@@ -16,16 +16,16 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api;
 
-use stdClass;
 use JsonException;
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 use pdeans\Miva\Api\Exceptions\JsonSerializeException;
+use pdeans\Miva\Api\Response\ErrorBag;
+use pdeans\Miva\Api\Response\Error;
 
-/**
- * API Response class
- */
 class Response
 {
     /**
@@ -36,51 +36,107 @@ class Response
     protected string $body;
 
     /**
-     * The API response data structure.
+     * Parsed response data grouped by function name
+     * and iteration/operation index.
      *
-     * @var array
+     * @var array<string, array<int, array<string, mixed>|object>>
+     * @phpstan-var array<string, array<int, array<string, mixed>|object>>
      */
-    protected array $data;
+    protected array $data = [];
 
     /**
-     * The API errors instance.
+     * HTTP response headers.
      *
-     * @var stdClass
+     * @var array<string, array<int, string>>
      */
-    protected stdClass $errors;
+    protected array $headers = [];
 
     /**
-     * The list of functions included in the API request.
+     * Error bag for the full response.
      *
-     * @var array
+     * @var \pdeans\Miva\Api\Response\ErrorBag
      */
-    protected array $functions;
+    protected ErrorBag $errors;
 
     /**
-     * Flag for determining if Api request was successful.
+     * Parsed result metadata grouped by function.
      *
-     * @var bool|null
+     * @var array<int, array{name: string, count: int}>
      */
-    protected bool|null $success;
+    protected array $functionMeta = [];
+
+    /**
+     * Unique function names included in the API request.
+     *
+     * @var array<int, string>
+     */
+    protected array $functions = [];
+
+    /**
+     * Parsed Content-Range data, if provided.
+     *
+     * @var array{completed_operations: int, total_operations: int|null}|null
+     */
+    protected ?array $contentRange = null;
+
+    /**
+     * HTTP status code.
+     *
+     * @var int
+     */
+    protected int $statusCode = 200;
+
+    /**
+     * Track if any result reported failure.
+     *
+     * @var bool
+     */
+    protected bool $hasFailure = false;
+
+    /**
+     * Track if any result reported success.
+     *
+     * @var bool
+     */
+    protected bool $hasSuccess = false;
+
+    /**
+     * Overall success flag.
+     *
+     * @var bool
+     */
+    protected bool $success = false;
 
     /**
      * Create a new API response instance.
      *
+     * @param array<int|string, mixed> $requestFunctionsList
+     * @param array<string, array<int, string>> $headers
+     *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
-    public function __construct(array $requestFunctionsList, string $responseBody)
-    {
+    public function __construct(
+        array $requestFunctionsList,
+        string $responseBody,
+        int $statusCode = 200,
+        array $headers = []
+    ) {
         if (empty($requestFunctionsList)) {
             throw new InvalidValueException('Empty request function list provided.');
         }
 
+        $this->statusCode = $statusCode;
         $this->body = $responseBody;
-        $this->data = [];
-        $this->errors = new stdClass();
-        $this->functions = $requestFunctionsList;
-        $this->success = null;
+        $this->headers = $this->normalizeHeaders($headers);
+        $this->functionMeta = $this->normalizeFunctionMeta($requestFunctionsList);
+        $this->functions = array_values(
+            array_unique(array_column($this->functionMeta, 'name'))
+        );
+        $this->errors = new ErrorBag();
+        $this->contentRange = $this->parseContentRangeHeader();
 
         $this->parseResponseBody($responseBody);
+        $this->success = $this->hasSuccess;
     }
 
     /**
@@ -94,9 +150,11 @@ class Response
     /**
      * Get the API response data property for specific function.
      *
+     * @return array<int|string, mixed>|object
+     *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
-    public function getData(string $functionName, int $index = 0): stdClass
+    public function getData(string $functionName, int $index = 0): array|object
     {
         if (! $this->isValidFunction($functionName)) {
             $this->throwInvalidFunctionError($functionName);
@@ -110,19 +168,25 @@ class Response
 
         $functionData = $this->data[$functionName][$index];
 
-        return $functionData->data ?? $functionData;
+        $payload = $functionData->data ?? $functionData;
+
+        return is_array($payload) || is_object($payload)
+            ? $payload
+            : (object) $payload;
     }
 
     /**
      * Get the API response errors.
      */
-    public function getErrors(): stdClass
+    public function getErrors(): ErrorBag
     {
         return $this->errors;
     }
 
     /**
      * Get the full API response for specific function.
+     *
+     * @return array<int, array<string, mixed>|object>
      *
      * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
@@ -137,6 +201,8 @@ class Response
 
     /**
      * Get the list of functions included in the API response.
+     *
+     * @return array<int, string>
      */
     public function getFunctions(): array
     {
@@ -145,10 +211,12 @@ class Response
 
     /**
      * Get the API response data.
+     *
+     * @return array<string, array<int, array<string, mixed>|object>>|array<int, array<string, mixed>|object>
      */
-    public function getResponse(string|null $functionName = null): array
+    public function getResponse(?string $functionName = null): array
     {
-        if (! is_null($functionName)) {
+        if ($functionName !== null) {
             return $this->getFunction($functionName);
         }
 
@@ -156,11 +224,93 @@ class Response
     }
 
     /**
+     * Get the HTTP status code.
+     */
+    public function getStatusCode(): int
+    {
+        return $this->statusCode;
+    }
+
+    /**
+     * Determine if the response was a partial (HTTP 206) response.
+     */
+    public function isPartial(): bool
+    {
+        return $this->statusCode === 206;
+    }
+
+    /**
+     * Get the parsed Content-Range header data, if present.
+     *
+     * @return array{completed_operations: int, total_operations: int|null}|null
+     */
+    public function getContentRange(): ?array
+    {
+        return $this->contentRange;
+    }
+
+    /**
+     * Get all HTTP headers keyed by header name.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function getHeaders(): array
+    {
+        return $this->headers;
+    }
+
+    /**
+     * Get a specific HTTP header value.
+     *
+     * @return array<int, string>
+     */
+    public function getHeader(string $name): array
+    {
+        $name = strtolower($name);
+
+        return $this->headers[$name] ?? [];
+    }
+
+    /**
      * Flag for determining if the API response contains errors.
+     *
+     * Alias of "successful" method.
      */
     public function isSuccess(): bool
     {
+        return $this->successful();
+    }
+
+    /**
+     * Determine if the response is successful.
+     */
+    public function successful(): bool
+    {
         return $this->success;
+    }
+
+    /**
+     * Determine if the response failed.
+     */
+    public function failed(): bool
+    {
+        return ! $this->success;
+    }
+
+    /**
+     * Determine if the response contains any errors.
+     */
+    public function hasErrors(): bool
+    {
+        return $this->errors->has();
+    }
+
+    /**
+     * Get the response errors bag.
+     */
+    public function errors(): ErrorBag
+    {
+        return $this->errors;
     }
 
     /**
@@ -184,39 +334,39 @@ class Response
             throw new JsonSerializeException($exception->getMessage());
         }
 
-        $functions = [];
-
         if (is_object($response)) {
-            $this->success = (bool) $response->success;
+            $meta = $this->functionMeta[0] ?? ['name' => $this->functions[0] ?? '', 'count' => 1];
 
-            if ($this->success) {
-                $functions = [$this->functions[0] => [$response]];
-            } else {
-                $this->errors->success = $this->success;
-                $this->errors->code = (string) $response->error_code;
-                $this->errors->message = (string) $response->error_message;
-            }
+            $this->addResult($meta['name'], 0, $response);
         } elseif (is_array($response)) {
-            $functionsCount = count($this->functions);
+            $metaCount = count($this->functionMeta);
 
-            foreach ($response as $index => $results) {
-                $functionName = $this->functions[($functionsCount === 1 ? 0 : $index)];
+            if ($metaCount === 1) {
+                $functionName = $this->functionMeta[0]['name'];
 
-                if (is_array($results)) {
-                    foreach ($results as $result) {
-                        $functions[$functionName][] = $result;
+                foreach ($response as $iterationIndex => $result) {
+                    $this->addResult($functionName, $iterationIndex, $result);
+                }
+            } else {
+                foreach ($response as $operationIndex => $result) {
+                    if (! isset($this->functionMeta[$operationIndex])) {
+                        continue;
                     }
-                } elseif (is_object($results)) {
-                    $functions[$functionName][] = $results;
+
+                    $functionName = $this->functionMeta[$operationIndex]['name'];
+
+                    if (is_array($result)) {
+                        foreach ($result as $iterationIndex => $iterationResult) {
+                            $this->addResult($functionName, $iterationIndex, $iterationResult);
+                        }
+                    } else {
+                        $this->addResult($functionName, 0, $result);
+                    }
                 }
             }
         }
 
-        if (is_null($this->success) && empty(get_object_vars($this->errors))) {
-            $this->success = true;
-        }
-
-        $this->data = $functions;
+        $this->success = $this->hasSuccess;
     }
 
     /**
@@ -227,5 +377,149 @@ class Response
     protected function throwInvalidFunctionError(string $functionName): void
     {
         throw new InvalidValueException('Function name "' . $functionName . '" invalid or missing from results list.');
+    }
+
+    /**
+     * Add a parsed result to the response store and aggregate errors.
+     */
+    protected function addResult(string $functionName, int $index, mixed $result): void
+    {
+        if (! is_object($result)) {
+            return;
+        }
+
+        $success = isset($result->success) ? (bool) $result->success : false;
+        $errors = $success ? new ErrorBag() : $this->buildErrorBag($functionName, $index, $result);
+
+        $this->data[$functionName][$index] = $result;
+        $this->errors = $this->errors->merge($errors);
+
+        if ($success) {
+            $this->hasSuccess = true;
+        } else {
+            $this->hasFailure = true;
+        }
+    }
+
+    /**
+     * Build an error bag from a response object.
+     */
+    protected function buildErrorBag(string $functionName, int $index, object $result): ErrorBag
+    {
+        if (! isset($result->error_code) && ! isset($result->error_message)) {
+            return new ErrorBag();
+        }
+
+        $errorFields = [];
+
+        if (isset($result->error_fields) && is_array($result->error_fields)) {
+            foreach ($result->error_fields as $field) {
+                if (! is_object($field)) {
+                    continue;
+                }
+
+                $errorFields[] = [
+                    'error_field' => isset($field->error_field) ? (string) $field->error_field : null,
+                    'error_message' => isset($field->error_message) ? (string) $field->error_message : null,
+                ];
+            }
+        }
+
+        $error = new Error(
+            code: isset($result->error_code) ? (string) $result->error_code : '',
+            message: isset($result->error_message) ? (string) $result->error_message : '',
+            field: isset($result->error_field) ? (string) $result->error_field : null,
+            fieldMessage: isset($result->error_field_message) ? (string) $result->error_field_message : null,
+            validationError: (bool) ($result->validation_error ?? false),
+            inputErrors: (bool) ($result->input_errors ?? false),
+            errorFields: $errorFields,
+            functionName: $functionName,
+            index: $index
+        );
+
+        return new ErrorBag([$error]);
+    }
+
+    /**
+     * Normalize function metadata from the request function list.
+     *
+     * @param array<int|string, mixed> $functionList
+     * @return array<int, array{name: string, count: int}>
+     */
+    protected function normalizeFunctionMeta(array $functionList): array
+    {
+        $meta = [];
+        $isAssoc = ! array_is_list($functionList);
+
+        if ($isAssoc) {
+            foreach ($functionList as $name => $functions) {
+                $count = is_array($functions) ? max(1, count($functions)) : 1;
+
+                $meta[] = [
+                    'name' => (string) $name,
+                    'count' => $count,
+                ];
+            }
+        } else {
+            foreach ($functionList as $name) {
+                $meta[] = [
+                    'name' => (string) $name,
+                    'count' => 1,
+                ];
+            }
+        }
+
+        return $meta;
+    }
+
+    /**
+     * Normalize response headers to lower-case keys.
+     *
+     * @param array<string, array<int, string>> $headers
+     * @return array<string, array<int, string>>
+     */
+    protected function normalizeHeaders(array $headers): array
+    {
+        $normalized = [];
+
+        foreach ($headers as $name => $values) {
+            $normalized[strtolower($name)] = $values;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Parse the Content-Range header into a structured array.
+     *
+     * @return array{completed_operations: int, total_operations: int|null}|null
+     */
+    protected function parseContentRangeHeader(): ?array
+    {
+        $header = $this->getHeader('Content-Range');
+
+        if (empty($header)) {
+            return null;
+        }
+
+        $range = trim((string) $header[0]);
+
+        if ($range === '') {
+            return null;
+        }
+
+        [$completed, $total] = array_pad(explode('/', $range, 2), 2, null);
+
+        $completedOperations = is_numeric($completed) ? (int) $completed : null;
+        $totalOperations = is_numeric($total) ? (int) $total : null;
+
+        if ($completedOperations === null) {
+            return null;
+        }
+
+        return [
+            'completed_operations' => $completedOperations,
+            'total_operations' => $totalOperations,
+        ];
     }
 }

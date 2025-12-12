@@ -16,13 +16,12 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api\Exceptions;
 
-use InvalidArgumentException as SPLInvalidArgumentException;
+use InvalidArgumentException as BaseInvalidArgumentException;
 
-/**
- * InvalidArgumentException class
- */
-class InvalidArgumentException extends SPLInvalidArgumentException
+class InvalidArgumentException extends BaseInvalidArgumentException
 {
 }

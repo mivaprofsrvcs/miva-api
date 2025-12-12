@@ -16,13 +16,12 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api\Exceptions;
 
 use RuntimeException;
 
-/**
- * JsonSerializeException class
- */
 class JsonSerializeException extends RuntimeException
 {
 }

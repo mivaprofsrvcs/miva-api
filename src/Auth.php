@@ -16,15 +16,26 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api;
 
 use pdeans\Miva\Api\Exceptions\InvalidValueException;
 
-/**
- * API Auth class
- */
 final class Auth
 {
+    /**
+     * API authentication header name.
+     */
+    public const AUTH_HEADER_NAME = 'X-Miva-API-Authorization';
+
+    /**
+     * List of valid HMAC types.
+     *
+     * @var string[]
+     */
+    private const HMAC_LIST = ['sha1', 'sha256'];
+
     /**
      * API access token.
      *
@@ -33,25 +44,11 @@ final class Auth
     private string $accessToken;
 
     /**
-     * API authentication header name.
-     *
-     * @var string
-     */
-    private string $authHeaderName;
-
-    /**
-     * List of valid HMAC types.
-     *
-     * @var array
-     */
-    private array $hmacList;
-
-    /**
      * API request HMAC signature.
      *
      * @var string
      */
-    private string $hmacSignature;
+    private string $hmacSignature = '';
 
     /**
      * The HMAC type.
@@ -75,11 +72,7 @@ final class Auth
         $this->accessToken = $accessToken;
         $this->privateKey = $privateKey;
 
-        $this->setHmacList();
         $this->setHmacType($hmacType);
-
-        $this->authHeaderName = 'X-Miva-API-Authorization';
-        $this->hmacSignature = '';
     }
 
     /**
@@ -87,7 +80,7 @@ final class Auth
      */
     public function createAuthHeader(string $data): string
     {
-        return sprintf('%s: %s', $this->authHeaderName, $this->createAuthHeaderValue($data));
+        return sprintf('%s: %s', self::AUTH_HEADER_NAME, $this->createAuthHeaderValue($data));
     }
 
     /**
@@ -119,23 +112,12 @@ final class Auth
 
     /**
      * Get the API authorization header.
+     *
+     * @return array<string, string>
      */
     public function getAuthHeader(string $data): array
     {
-        return [$this->authHeaderName => $this->createAuthHeaderValue($data)];
-    }
-
-    /**
-     * Set the list of valid HMAC types
-     */
-    protected function setHmacList(): static
-    {
-        $this->hmacList = [
-            'sha1',
-            'sha256',
-        ];
-
-        return $this;
+        return [self::AUTH_HEADER_NAME => $this->createAuthHeaderValue($data)];
     }
 
     /**
@@ -143,21 +125,17 @@ final class Auth
      */
     protected function setHmacType(string $hmacType): static
     {
-        if (!$this->hmacList) {
-            $this->setHmacList();
-        }
-
-        if ($hmacType === '' || (is_string($this->privateKey) && $this->privateKey === '')) {
+        if ($hmacType === '' || $this->privateKey === '') {
             $this->hmacType = '';
         } else {
             $hmacTypeFormatted = strtolower($hmacType);
 
-            if (!in_array($hmacTypeFormatted, $this->hmacList)) {
+            if (! in_array($hmacTypeFormatted, self::HMAC_LIST)) {
                 throw new InvalidValueException(
                     sprintf(
                         'Invalid HMAC type "%s" provided. Valid HMAC types: "%s".',
                         $hmacType,
-                        implode('", "', $this->hmacList)
+                        implode('", "', self::HMAC_LIST)
                     )
                 );
             }

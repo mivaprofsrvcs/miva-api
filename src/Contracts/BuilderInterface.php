@@ -16,13 +16,12 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api\Contracts;
 
 use JsonSerializable;
 
-/**
- * Builder Interface
- */
 interface BuilderInterface extends JsonSerializable
 {
 }

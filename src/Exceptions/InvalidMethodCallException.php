@@ -16,13 +16,12 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api\Exceptions;
 
 use BadMethodCallException;
 
-/**
- * InvalidMethodCallException class
- */
 class InvalidMethodCallException extends BadMethodCallException
 {
 }

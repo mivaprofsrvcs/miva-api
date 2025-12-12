@@ -16,20 +16,27 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace pdeans\Miva\Api;
 
+use Composer\InstalledVersions;
 use JsonException;
-use pdeans\Http\Client;
-use pdeans\Http\Request as HttpRequest;
-use pdeans\Http\Response as HttpResponse;
+use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Psr7\Request as PsrRequest;
 use pdeans\Miva\Api\Builders\RequestBuilder;
 use pdeans\Miva\Api\Exceptions\JsonSerializeException;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 
-/**
- * API Request class
- */
 class Request
 {
+    /**
+     * Default timeout for a single Miva request (in seconds).
+     */
+    public const DEFAULT_TIMEOUT = 60;
+
     /**
      * API request body.
      *
@@ -40,30 +47,23 @@ class Request
     /**
      * HTTP client (cURL) instance.
      *
-     * @var \pdeans\Http\Client
+     * @var \GuzzleHttp\ClientInterface
      */
-    protected Client $client;
-
-    /**
-     * API request headers.
-     *
-     * @var array
-     */
-    protected array $headers;
+    protected ClientInterface $client;
 
     /**
      * The HTTP request instance.
      *
-     * @var \pdeans\Http\Request|null
+     * @var \Psr\Http\Message\RequestInterface|null
      */
-    protected HttpRequest|null $request = null;
+    protected ?RequestInterface $request = null;
 
     /**
      * The HTTP response instance.
      *
-     * @var \pdeans\Http\Response|null
+     * @var \Psr\Http\Message\ResponseInterface|null
      */
-    protected HttpResponse|null $response = null;
+    protected ?ResponseInterface $response = null;
 
     /**
      * The API request builder instance.
@@ -73,14 +73,57 @@ class Request
     protected RequestBuilder $requestBuilder;
 
     /**
-     * Create a new API request instance.
+     * Cached package version string.
+     *
+     * @var string|null
      */
-    public function __construct(RequestBuilder $requestBuilder, array $clientOpts = [])
+    protected static ?string $version = null;
+
+    /**
+     * Timeout override header value in seconds.
+     *
+     * @var int|null
+     */
+    protected ?int $timeoutHeader = null;
+
+    /**
+     * Binary encoding header value.
+     *
+     * @var string|null
+     */
+    protected ?string $binaryEncoding = null;
+
+    /**
+     * Range header value for multi-call operations.
+     *
+     * @var string|null
+     */
+    protected ?string $rangeHeader = null;
+
+    /**
+     * Create a new API request instance.
+     *
+     * @param ClientInterface|array<string, mixed>|null $client
+     */
+    public function __construct(RequestBuilder $requestBuilder, ClientInterface|array|null $client = null)
     {
-        $this->client = new Client($clientOpts);
-        $this->headers = ['Content-Type' => 'application/json'];
+        $this->client = $this->resolveClient($client);
 
         $this->setRequestBuilder($requestBuilder);
+    }
+
+    /**
+     * Get default request headers.
+     *
+     * @return array<string, string>
+     */
+    protected function defaultHeaders(): array
+    {
+        return [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+            'User-Agent' => 'mivaprofsrvcs-miva-api/' . $this->packageVersion(),
+        ];
     }
 
     /**
@@ -92,11 +135,21 @@ class Request
      */
     public function getBody(int $encodeOpts = JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT, int $depth = 512): string
     {
+        if ($depth < 1) {
+            throw new JsonSerializeException('JSON encode depth must be at least 1.');
+        }
+
         try {
-            $this->body = json_encode($this->requestBuilder, $encodeOpts, $depth);
+            $encoded = json_encode($this->requestBuilder, $encodeOpts, $depth);
         } catch (JsonException $exception) {
             throw new JsonSerializeException($exception->getMessage());
         }
+
+        if ($encoded === false) {
+            throw new JsonSerializeException('Failed to encode request body.');
+        }
+
+        $this->body = $encoded;
 
         return $this->body;
     }
@@ -110,17 +163,38 @@ class Request
     }
 
     /**
+     * Determine the package version for the User-Agent header.
+     */
+    protected function packageVersion(): string
+    {
+        if (self::$version !== null) {
+            return self::$version;
+        }
+
+        if (class_exists(InstalledVersions::class)) {
+            $version = InstalledVersions::getPrettyVersion('pdeans/miva-api');
+
+            if (is_string($version) && $version !== '') {
+                return self::$version = $version;
+            }
+        }
+
+        return self::$version = 'unknown';
+    }
+
+    /**
      * Release the client request handler.
      */
     public function releaseClient(): void
     {
-        $this->client->release();
+        $this->request = null;
+        $this->response = null;
     }
 
     /**
      * Get the API request.
      */
-    public function request(): HttpRequest|null
+    public function request(): ?RequestInterface
     {
         return $this->request;
     }
@@ -128,29 +202,29 @@ class Request
     /**
      * Get the previous API response.
      */
-    public function response(): HttpResponse|null
+    public function response(): ?ResponseInterface
     {
         return $this->response;
     }
 
     /**
      * Send an API request.
+     *
+     * @param array<string, string> $httpHeaders
      */
-    public function sendRequest(string $url, Auth $auth, array $httpHeaders = []): HttpResponse
+    public function sendRequest(string $url, Auth|SshAuth|null $auth, array $httpHeaders = []): ResponseInterface
     {
         $this->response = null;
 
         $body = $this->getBody();
 
-        $headers = array_merge(
-            $this->headers,
-            $httpHeaders,
-            $auth->getAuthHeader($body)
-        );
+        $headers = $this->buildHeaders($httpHeaders, $auth, $body);
 
-        $this->request = new HttpRequest($url, 'POST', $this->client->getStream($body), $headers);
+        $this->request = new PsrRequest('POST', $url, $headers, $body);
 
-        $this->response = $this->client->sendRequest($this->request);
+        $this->response = $this->client->send($this->request, [
+            'http_errors' => false,
+        ]);
 
         return $this->response;
     }
@@ -163,5 +237,96 @@ class Request
         $this->requestBuilder = $requestBuilder;
 
         return $this;
+    }
+
+    /**
+     * Set the timeout header value.
+     */
+    public function setTimeoutHeader(?int $timeout): static
+    {
+        $this->timeoutHeader = $timeout;
+
+        return $this;
+    }
+
+    /**
+     * Set the binary encoding header value.
+     */
+    public function setBinaryEncoding(?string $encoding): static
+    {
+        $this->binaryEncoding = $encoding;
+
+        return $this;
+    }
+
+    /**
+     * Set the range header value.
+     */
+    public function setRangeHeader(?string $range): static
+    {
+        $this->rangeHeader = $range;
+
+        return $this;
+    }
+
+    /**
+     * Resolve HTTP client instance from provided configuration.
+     *
+     * @param ClientInterface|array<string, mixed>|null $client
+     */
+    protected function resolveClient(ClientInterface|array|null $client): ClientInterface
+    {
+        if ($client instanceof ClientInterface) {
+            return $client;
+        }
+
+        if (is_array($client)) {
+            if (isset($client['client']) && $client['client'] instanceof ClientInterface) {
+                return $client['client'];
+            }
+
+            $clientOptions = $client;
+
+            unset($clientOptions['client']);
+
+            return new Client($clientOptions);
+        }
+
+        return new Client([]);
+    }
+
+    /**
+     * Build headers for the request.
+     *
+     * @param array<string, string> $httpHeaders
+     * @param \pdeans\Miva\Api\Auth|\pdeans\Miva\Api\SshAuth|null $auth
+     * @param string $body
+     * @return array<string, string>
+     */
+    protected function buildHeaders(array $httpHeaders, Auth|SshAuth|null $auth, string $body): array
+    {
+        $headers = $this->defaultHeaders();
+
+        if ($this->timeoutHeader !== null && $this->timeoutHeader !== self::DEFAULT_TIMEOUT) {
+            $headers['X-Miva-API-Timeout'] = (string) $this->timeoutHeader;
+        }
+
+        if ($this->binaryEncoding !== null) {
+            $headers['X-Miva-API-Binary-Encoding'] = $this->binaryEncoding;
+        }
+
+        if ($this->rangeHeader !== null) {
+            $headers['Range'] = $this->rangeHeader;
+        }
+
+        if ($httpHeaders) {
+            $headers = array_merge($headers, $httpHeaders);
+        }
+
+        if ($auth !== null) {
+            $headers = array_merge($headers, $auth->getAuthHeader($body));
+        }
+
+        return $headers;
     }
 }
