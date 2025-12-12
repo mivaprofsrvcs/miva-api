@@ -2,13 +2,21 @@ name: Tests
 
 on:
   push:
-    branches:
-      - master
+    branches: [ master ]
   pull_request:
 
 jobs:
   tests:
     runs-on: ubuntu-latest
+
+    env:
+      MIVA_API_URL: ${{ secrets.MIVA_API_URL }}
+      MIVA_API_STORE_CODE: ${{ secrets.MIVA_API_STORE_CODE }}
+      MIVA_API_ACCESS_TOKEN: ${{ secrets.MIVA_API_ACCESS_TOKEN }}
+      MIVA_API_PRIVATE_KEY: ${{ secrets.MIVA_API_PRIVATE_KEY }}
+      MIVA_API_HTTP_CACHE: ${{ secrets.MIVA_API_HTTP_CACHE }}
+      MIVA_API_HTTP_VERIFY: ${{ secrets.MIVA_API_HTTP_VERIFY }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
