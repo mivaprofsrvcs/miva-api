@@ -122,7 +122,12 @@ class Request
         return [
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-            'User-Agent' => 'mivaprofsrvcs-miva-api/' . $this->packageVersion(),
+            'User-Agent' => sprintf(
+                'MVPSMivaApi/%s (php/%s %s)',
+                $this->packageVersion(),
+                PHP_VERSION,
+                PHP_OS
+            ),
         ];
     }
 
