@@ -374,8 +374,8 @@ You may specify which HTTP headers are attached to all API requests with the `ad
 
 - `Content-Type: application/json`
 - `Accept: application/json`
-- `User-Agent: mivaprofsrvcs-miva-api/<version>`
-- The appropriate auth header (`X-Miva-API-Authorization` for token auth or `X-Miva-API-Authentication` for SSH auth)
+- `User-Agent: MVPSMivaApi/<version> (php/<php_version> <php_os>)`
+- `X-Miva-API-Authorization`, automatically formatted for token or SSH authentication based on your configuration.
 - Optional headers when configured: `X-Miva-API-Timeout`, `X-Miva-API-Binary-Encoding`, and `Range`.
 
 ```php
