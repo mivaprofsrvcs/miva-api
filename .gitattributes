@@ -30,3 +30,4 @@
 /styleci.yml        export-ignore
 /composer.lock      export-ignore
 /extra              export-ignore
+/CHANGELOG.md       export-ignore
