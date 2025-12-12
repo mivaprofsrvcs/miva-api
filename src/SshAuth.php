@@ -9,16 +9,16 @@ use pdeans\Miva\Api\Exceptions\InvalidValueException;
 final class SshAuth
 {
     /**
+     * SSH authentication header name.
+     */
+    public const AUTH_HEADER_NAME = Auth::AUTH_HEADER_NAME;
+
+    /**
      * Supported SSH algorithms.
      *
      * @var string[]
      */
     private const SUPPORTED_ALGORITHMS = ['sha256', 'sha512'];
-
-    /**
-     * SSH authentication header name.
-     */
-    public const AUTH_HEADER_NAME = 'X-Miva-API-Authentication';
 
     /**
      * @var callable(string, string, string): string|null
@@ -67,15 +67,18 @@ final class SshAuth
      */
     public function createAuthHeader(string $body): string
     {
-        $signature = $this->createSignature($body);
-
-        $suffix = $this->algorithm === 'sha512' ? 'SHA2-512' : 'SHA2-256';
-
-        return sprintf('SSH-RSA-%s %s:%s', $suffix, $this->username, $signature);
+        return sprintf(
+            'SSH-RSA-%s %s:%s',
+            $this->algorithm === 'sha512' ? 'SHA2-512' : 'SHA2-256',
+            base64_encode($this->username),
+            $this->createSignature($body)
+        );
     }
 
     /**
      * Create the SSH signature.
+     *
+     * @throws \pdeans\Miva\Api\Exceptions\InvalidValueException
      */
     protected function createSignature(string $body): string
     {
@@ -85,7 +88,20 @@ final class SshAuth
             return base64_encode($signer($body, $this->privateKey, $this->algorithm));
         }
 
-        return base64_encode(hash_hmac($this->algorithm, $body, $this->privateKey, true));
+        $privateKey = openssl_pkey_get_private($this->privateKey);
+
+        if ($privateKey === false) {
+            throw new InvalidValueException('Invalid SSH private key provided.');
+        }
+
+        $opensslAlgorithm = $this->algorithm === 'sha512' ? OPENSSL_ALGO_SHA512 : OPENSSL_ALGO_SHA256;
+        $signature = '';
+
+        if (! openssl_sign($body, $signature, $privateKey, $opensslAlgorithm)) {
+            throw new InvalidValueException('Unable to sign request with provided SSH private key.');
+        }
+
+        return base64_encode($signature);
     }
 
     /**
