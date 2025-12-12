@@ -10,8 +10,14 @@ use Psr\Http\Message\ResponseInterface;
 
 it('returns a successful response for a product list query', function (): void {
     $functionName = 'ProductList_Load_Query';
-    $config = mivaClientConfig();
-    $config['http_client'] = new FakeGuzzleClient();
+    $config = [
+        'url' => 'https://example.test/mm5/json.mvc',
+        'store_code' => 'PS',
+        'access_token' => 'token',
+        'private_key' => 'key',
+        'http_client' => new FakeGuzzleClient(),
+        'timestamp' => false,
+    ];
 
     $client = new Client($config);
 
@@ -33,8 +39,14 @@ it('returns a successful response for a product list query', function (): void {
 });
 
 it('exposes previous request and response objects', function (): void {
-    $config = mivaClientConfig();
-    $config['http_client'] = new FakeGuzzleClient();
+    $config = [
+        'url' => 'https://example.test/mm5/json.mvc',
+        'store_code' => 'PS',
+        'access_token' => 'token',
+        'private_key' => 'key',
+        'http_client' => new FakeGuzzleClient(),
+        'timestamp' => false,
+    ];
 
     $client = new Client($config);
 
