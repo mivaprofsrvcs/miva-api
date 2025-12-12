@@ -465,7 +465,11 @@ class Client
      */
     public function setSshAuth(string $username, string $privateKey, string $algorithm = 'sha256'): static
     {
-        $this->auth = new SshAuth($username, $privateKey, $algorithm);
+        $this->auth = new SshAuth(
+            $username,
+            $this->resolvePrivateKey($privateKey),
+            $algorithm
+        );
 
         $this->options['ssh_auth'] = [
             'username' => $username,
@@ -532,6 +536,24 @@ class Client
         $hasSshAuth = isset($options['ssh_auth']['username'], $options['ssh_auth']['private_key']);
 
         return [$hasTokenAuth, $hasSshAuth];
+    }
+
+    /**
+     * Resolve a private key value that may be a file path or raw contents.
+     */
+    protected function resolvePrivateKey(string $privateKey): string
+    {
+        if ($privateKey !== '' && is_file($privateKey) && is_readable($privateKey)) {
+            $contents = file_get_contents($privateKey);
+
+            if ($contents === false) {
+                throw new InvalidValueException('Unable to read SSH private key file.');
+            }
+
+            return $contents;
+        }
+
+        return $privateKey;
     }
 
     /**

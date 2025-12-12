@@ -135,21 +135,7 @@ function mivaSshClientConfig(): array
         return [];
     }
 
-    if (! is_readable($privateKeyPath)) {
-        skipTest('SSH private key file is not readable: ' . $privateKeyPath);
-
-        return [];
-    }
-
-    $fileContents = file_get_contents($privateKeyPath);
-
-    if ($fileContents === false) {
-        skipTest('Unable to read SSH private key file: ' . $privateKeyPath);
-
-        return [];
-    }
-
-    $values['private_key'] = $fileContents;
+    $values['private_key'] = $privateKeyPath;
 
     $headers = array_filter([
         'Authorization' => env('MIVA_API_HTTP_AUTH'),

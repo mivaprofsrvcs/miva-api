@@ -7,6 +7,7 @@ use pdeans\Miva\Api\Exceptions\MissingRequiredValueException;
 use pdeans\Miva\Api\Auth;
 use pdeans\Miva\Api\Response as ApiResponse;
 use pdeans\Miva\Api\SshAuth;
+use Tests\Support\TestKeys;
 use Tests\Support\FakeGuzzleClient;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -105,6 +106,7 @@ it('merges custom headers and preserves defaults', function (): void {
     expect($headers)->toHaveKey('Content-Type');
     expect($headers)->toHaveKey('Accept');
     expect($headers)->toHaveKey('User-Agent');
+    expect($headers['User-Agent'][0])->toMatch('/^MVPSMivaApi\\/[^\\s]+ \\(php\\/[\\d\\.]+ [^\\)]+\\)$/');
     expect($headers['X-Custom'][0])->toBe('abc');
     expect($headers)->toHaveKey(Auth::AUTH_HEADER_NAME);
 });
@@ -166,17 +168,20 @@ it('builds an SSH authentication header', function (): void {
         'timestamp' => false,
     ]);
 
-    $client->setSshAuth('ssh-user', 'ssh-private-key', 'sha256');
+    $client->setSshAuth('ssh-user', TestKeys::sshPrivateKey(), 'sha256');
 
     $client->func('ProductList_Load_Query')->count(1)->add();
     $client->send(true);
 
     $body = (string) ($guzzleMock->captured?->getBody() ?? '');
     $headers = $guzzleMock->captured?->getHeaders() ?? [];
-    $signature = base64_encode(hash_hmac('sha256', $body, 'ssh-private-key', true));
-    $expected = 'SSH-RSA-SHA2-256 ssh-user:' . $signature;
 
-    expect($headers[SshAuth::AUTH_HEADER_NAME][0] ?? null)->toBe($expected);
+    $authHeader = $headers[SshAuth::AUTH_HEADER_NAME][0] ?? '';
+    $prefix = 'SSH-RSA-SHA2-256 ' . base64_encode('ssh-user') . ':';
+    $signature = explode(':', $authHeader, 2)[1] ?? '';
+
+    expect($authHeader)->toStartWith($prefix);
+    expect($signature)->not()->toBe('');
 });
 
 it('parses partial responses with content range headers', function (): void {

@@ -122,7 +122,12 @@ class Request
         return [
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-            'User-Agent' => 'mivaprofsrvcs-miva-api/' . $this->packageVersion(),
+            'User-Agent' => sprintf(
+                'MVPSMivaApi/%s (php/%s %s)',
+                $this->packageVersion(),
+                PHP_VERSION,
+                PHP_OS
+            ),
         ];
     }
 
@@ -216,7 +221,7 @@ class Request
     {
         $this->response = null;
 
-        $body = $this->getBody();
+        $body = $this->getBody(JSON_THROW_ON_ERROR);
 
         $headers = $this->buildHeaders($httpHeaders, $auth, $body);
 
